@@ -54,6 +54,12 @@ FEX41073_PATCHED_X86_64=2b47ed8c19d1d15d0f82519d39d64bf34113b285c4ada325bb64c5e5
 FEX41073_PATCHED_I386=3f4b0d9589c1f374e3c2fd135263f2bf3c8300e09dd010fd778936dd71e894ad
 FEX41073_PATCHED_AARCH64=2efb13f3303adc2c8ee61b93e027e4e94730a2e6b0162c7e6aebd4104200f07c
 
+# Gcenx wine-devel 11.15, stock upstream Wine. Point CX_ROOT at its Contents/Resources/wine.
+WINE1115_CLEAN_X86_64=682181234a55f5b7eed5b2ffa691fbdef1b488734337ef67ea7b5ce17adf43a2
+WINE1115_CLEAN_I386=49396e7ad804a5345b1b968d02fdb6697ddbb7428e61e20e62806c50c37589d1
+WINE1115_PATCHED_X86_64=3116a185ecd54762dc6ebca814c23c11f0b65732d8852d26c5b228252ec726c0
+WINE1115_PATCHED_I386=88f9a1d16dd7127100eab902156390ec2a5ec67770cfddd3fd3f1237c9965309
+
 install=0
 [ "${1:-}" = "--install" ] && install=1
 
@@ -82,10 +88,11 @@ flavor_of() {
             "$ROSETTA41069_CLEAN_X86_64") echo rosetta-41069; return 0 ;;
             "$ROSETTA41073_CLEAN_X86_64") echo rosetta-41073; return 0 ;;
             "$CX26_CLEAN_X86_64")         echo cx26; return 0 ;;
+            "$WINE1115_CLEAN_X86_64")     echo wine1115; return 0 ;;
         esac
     done
     die "no ntdll under $CX_ROOT/lib/wine matches a pinned build
-       pass FLAVOR=rosetta, rosetta-41069, rosetta-41073, cx26, fex, fex-41069 or fex-41073 to choose the pins anyway"
+       pass FLAVOR=rosetta, rosetta-41069, rosetta-41073, cx26, wine1115, fex, fex-41069 or fex-41073 to choose the pins anyway"
 }
 
 if [ -z "${FLAVOR:-}" ]; then
@@ -97,13 +104,14 @@ case "$FLAVOR" in
     rosetta-41069) tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc"; BUILD=27.0.0.41069 ;;
     rosetta-41073) tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc"; BUILD=27.0.0.41073 ;;
     cx26)          tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc"; BUILD=26.3.0.39832 ;;
+    wine1115)      tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc"; BUILD=11.15-wine ;;
     fex)           tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc clang ld.lld"
                    BUILD=27.0.0.40921-fex ;;
     fex-41069)     tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc clang ld.lld"
                    BUILD=27.0.0.41069-fex ;;
     fex-41073)     tools="x86_64-w64-mingw32-gcc i686-w64-mingw32-gcc clang ld.lld"
                    BUILD=27.0.0.41073-fex ;;
-    *)             die "unknown flavor $FLAVOR, expected rosetta, rosetta-41069, rosetta-41073, cx26, fex, fex-41069 or fex-41073" ;;
+    *)             die "unknown flavor $FLAVOR, expected rosetta, rosetta-41069, rosetta-41073, cx26, wine1115, fex, fex-41069 or fex-41073" ;;
 esac
 
 for t in $tools; do
@@ -161,6 +169,13 @@ case "$FLAVOR" in
             "$CX26_CLEAN_X86_64" "$CX26_PATCHED_X86_64"
         patch_one i386-windows   build32.sh cx26 detour32-cx26.bin \
             "$CX26_CLEAN_I386"   "$CX26_PATCHED_I386"
+        ;;
+    wine1115)
+        ARCHES="x86_64-windows i386-windows"
+        patch_one x86_64-windows build.sh   wine1115 detour2-wine1115.bin \
+            "$WINE1115_CLEAN_X86_64" "$WINE1115_PATCHED_X86_64"
+        patch_one i386-windows   build32.sh wine1115 detour32-wine1115.bin \
+            "$WINE1115_CLEAN_I386"   "$WINE1115_PATCHED_I386"
         ;;
     fex)
         # The FEX build ships a version of Wine that runs through Rosetta as well as

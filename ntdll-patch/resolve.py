@@ -146,6 +146,21 @@ PINNED = {
          'exports': {'LdrGetDllHandle': 0x180043818, 'LdrLoadDll': 0x180041344,
                      'NtProtectVirtualMemory': 0x180066f60, 'NtOpenFile': 0x180066bc0,
                      'NtReadFile': 0x180066620, 'NtClose': 0x180066740}},
+    # Gcenx wine-devel 11.15 (stock upstream Wine, frame-pointer build_module)
+    '682181234a55f5b7eed5b2ffa691fbdef1b488734337ef67ea7b5ce17adf43a2':
+        {'hookRVA': 0x3512c, 'stolen': '488b8590000000', 'caveRVA': 0xb3000, 'caveSize': 4096,
+         'resume': 0x35133, 'wm': 'r14', 'load_path': 0x50,
+         'payload': 'dc4d86de934dd3b140459671e92b3c837a5ded803f62a6e6cfcdb9f09065d95f',
+         'exports': {'LdrGetDllHandle': 0x17002fa80, 'LdrLoadDll': 0x17002d4e0,
+                     'NtProtectVirtualMemory': 0x170055944, 'NtOpenFile': 0x1700555a4,
+                     'NtReadFile': 0x170055004, 'NtClose': 0x170055124}},
+    '49396e7ad804a5345b1b968d02fdb6697ddbb7428e61e20e62806c50c37589d1':
+        {'hookRVA': 0x2edcd, 'stolen': '8b4514a802', 'caveRVA': 0x6a075, 'caveSize': 3979,
+         'resume': 0x2edd2, 'wm': 'edi', 'load_path': -0x3c,
+         'payload': '527431a3a74e9dff7bc3582277ddfa7b44bcac6fba285c028fd2c94fd9202418',
+         'exports': {'LdrGetDllHandle': 0x7bc2a670, 'LdrLoadDll': 0x7bc28800,
+                     'NtProtectVirtualMemory': 0x7bc4c874, 'NtOpenFile': 0x7bc4c6a4,
+                     'NtReadFile': 0x7bc4c3d4, 'NtClose': 0x7bc4c464}},
 }
 EXPORTS = ['LdrGetDllHandle', 'LdrLoadDll', 'NtProtectVirtualMemory',
            'NtOpenFile', 'NtReadFile', 'NtClose']
