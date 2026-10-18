@@ -24,6 +24,7 @@ enum SupportPaths {
     static var runners: URL { support.appending(path: "runners") }
     static var backups: URL { support.appending(path: "backups") }
     static var launchers: URL { support.appending(path: "launchers") }
+    static var dxvk: URL { support.appending(path: "dxvk") }
 
     static var signatures: URL {
         support.appending(path: "signatures/macos.arm64")
@@ -44,6 +45,10 @@ enum SupportPaths {
 
     static var wineDownloads: URL {
         home.appending(path: "Library/Caches/\(supportDirName)/wine")
+    }
+
+    static var dxvkDownloads: URL {
+        home.appending(path: "Library/Caches/\(supportDirName)/dxvk")
     }
 
     static var deployedVersion: URL { support.appending(path: "dylib.version") }
