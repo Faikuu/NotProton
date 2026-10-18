@@ -462,6 +462,73 @@ struct ActivationQuestionTests {
     }
 }
 
+// The offer to download Wine is only for someone with nothing else to run games on.
+@MainActor
+@Suite("Downloading Wine")
+struct WineDownloadTests {
+
+    @Test("Wine is offered only with no usable CrossOver and no runner")
+    func wineOfferTruthTable() {
+        #expect(SystemStatus.wineOffer(hasUsableCrossOver: false, runner: .none))
+        #expect(!SystemStatus.wineOffer(hasUsableCrossOver: true, runner: .none))
+        #expect(!SystemStatus.wineOffer(hasUsableCrossOver: false, runner: .ready(builds: ["11.15-wine"])))
+        #expect(!SystemStatus.wineOffer(hasUsableCrossOver: false, runner: .unpatched(builds: ["11.15-wine"], problems: ["x"])))
+    }
+
+    @Test("requestWineDownload asks first and downloads nothing")
+    func requestAsks() {
+        let status = SystemStatus()
+
+        status.requestWineDownload()
+
+        #expect(status.pendingConfirmation == .downloadWine)
+        #expect(!status.isBusy)
+        #expect(status.outcome == nil)
+        #expect(status.failure == nil)
+    }
+
+    @Test("Asking while a run is in flight asks nothing")
+    func requestWaitsForIdle() {
+        let status = SystemStatus()
+        _ = status.beginRun("cloning")
+
+        status.requestWineDownload()
+
+        #expect(status.pendingConfirmation == nil)
+    }
+
+    @Test("The choice to replace a copy is remembered until it is answered")
+    func replacementIsRemembered() {
+        let status = SystemStatus()
+        #expect(!status.pendingWineReplacement)
+
+        status.requestWineDownload(replacingExisting: true)
+        #expect(status.pendingWineReplacement)
+
+        status.cancelWineDownload()
+        #expect(!status.pendingWineReplacement)
+
+        // A plain ask never inherits an earlier one.
+        status.requestWineDownload(replacingExisting: true)
+        status.requestWineDownload()
+        #expect(!status.pendingWineReplacement)
+    }
+
+    @Test("With no Wine to download the run fails and forgets the request")
+    func nothingToDownload() async {
+        let status = SystemStatus()
+        status.refreshAfterRun = { _ in }
+        status.requestWineDownload(replacingExisting: true)
+
+        await status.downloadWine(nil)
+
+        #expect(status.failure != nil)
+        #expect(status.outcome == nil)
+        #expect(!status.pendingWineReplacement)
+        #expect(!status.isBusy)
+    }
+}
+
 @MainActor
 @Suite("Run bookkeeping")
 struct PerformTests {

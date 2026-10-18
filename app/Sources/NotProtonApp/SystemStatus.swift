@@ -79,6 +79,8 @@ final class SystemStatus {
         case replaceSteam
         case blockUpdates
         case installUnlicensed
+        case installWithWine
+        case downloadWine
         case toolUnlicensed
         case removeBuild
         case removeEverything
@@ -150,7 +152,8 @@ final class SystemStatus {
             installed: snapshot.installedRunners,
             damaged: snapshot.damagedRunners,
             orphaned: snapshot.orphanedRunners,
-            unpatched: unpatched
+            unpatched: unpatched,
+            downloadable: SupportedRunners.downloadable
         )
     }
 
@@ -192,8 +195,20 @@ final class SystemStatus {
         }
     }
 
+    // Wine is the way out for someone with no CrossOver and no tool, so it is offered
+    // in neither of the other cases.
+    nonisolated static func wineOffer(hasUsableCrossOver: Bool, runner: RunnerState) -> Bool {
+        !hasUsableCrossOver && runner == RunnerState.none
+    }
+
     func requestInstall() async {
         guard canInstall else { return }
+        // No pinned Wine build means there is nothing to offer yet.
+        if Self.wineOffer(hasUsableCrossOver: usableCrossOver != nil, runner: snapshot?.runner ?? RunnerState.none),
+           !SupportedRunners.downloadable.isEmpty {
+            pendingConfirmation = .installWithWine
+            return
+        }
         checkingLicense = true
         defer { checkingLicense = false }
         if let question = Self.activationQuestion(
@@ -223,6 +238,18 @@ final class SystemStatus {
         } else {
             await setUpRunner(from: install, replacingExisting: replacingExisting)
         }
+    }
+
+    private(set) var pendingWineReplacement = false
+
+    func requestWineDownload(replacingExisting: Bool = false) {
+        guard canInstall else { return }
+        pendingWineReplacement = replacingExisting
+        pendingConfirmation = .downloadWine
+    }
+
+    func cancelWineDownload() {
+        pendingWineReplacement = false
     }
 
     private(set) var pendingRemoval: String?
@@ -428,6 +455,36 @@ final class SystemStatus {
         }
     }
 
+    // Fetching and unpacking Wine is long, so it runs off the main actor like the clone does.
+    private func downloadAndSetUp(
+        _ build: RunnerBuild, replacingExisting: Bool,
+        progress: @escaping @Sendable (String) -> Void
+    ) async throws -> RunnerSetup.Outcome {
+        try await Task.detached(priority: .userInitiated) {
+            try await RunnerSetup.run(downloading: build, replacingExisting: replacingExisting, report: progress)
+        }.value
+    }
+
+    func downloadWine(_ build: RunnerBuild? = SupportedRunners.downloadable.first) async {
+        guard canInstall else { return }
+        let replacing = pendingWineReplacement
+        pendingWineReplacement = false
+        guard let build else {
+            setFailure(String(localized: "No Wine build is available to download."))
+            AppLog.note("run refused: no downloadable Wine")
+            outcome = nil
+            return
+        }
+
+        await perform(from: String(localized: "Downloading Wine")) { progress in
+            let lock = try DeploymentContent.acquireInstallationLock()
+            defer { lock.release() }
+            try await requireInstallableContent()
+            let result = try await downloadAndSetUp(build, replacingExisting: replacing, progress: progress)
+            return runnerOutcome(result)
+        }
+    }
+
     func fetchValveBinaries() async {
         guard canInstall else { return }
         await perform(from: ValveFetcher.Phase.verifying.label) { progress in
@@ -468,7 +525,7 @@ final class SystemStatus {
         }
     }
 
-    func installIntoSteam() async {
+    func installIntoSteam(downloadingWine: Bool = false) async {
         await perform(from: InstallPhase.checkingPayload.label) { progress in
             let lock = try DeploymentContent.acquireInstallationLock()
             defer { lock.release() }
@@ -492,6 +549,9 @@ final class SystemStatus {
                 _ = try await Task.detached(priority: .userInitiated) {
                     try RunnerSetup.run(from: install) { progress($0.label) }
                 }.value
+            } else if downloadingWine, state.runner == .none, let wine = SupportedRunners.downloadable.first {
+                progress(String(localized: "Downloading Wine"))
+                _ = try await downloadAndSetUp(wine, replacingExisting: false, progress: progress)
             } else if install != nil, state.license?.licensed == false, state.runner == .none {
                 // Not a failure, NotProton was installed but without a compatibility tool
                 parts.append(Self.toolNotActivated)
