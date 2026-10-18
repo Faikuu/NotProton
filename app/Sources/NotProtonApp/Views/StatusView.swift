@@ -316,6 +316,11 @@ struct StatusView: View {
         Task { await status.downloadWine() }
     }
 
+    // Shown on the free Wine's row, so the limit is visible before anyone reads the dialog.
+    nonisolated static func directXLimitNote(isDownloadable: Bool) -> String? {
+        isDownloadable ? String(localized: "DirectX 12 and DirectX 9 games are not supported on this runtime.") : nil
+    }
+
     // A downloaded Wine that is ready but has no DirectX 11 layer on disk is the only case with a repair.
     nonisolated static func directXNeedsRepair(isDownloadable: Bool, copy: CrossOverRow.Copy, installed: Bool) -> Bool {
         isDownloadable && copy == .ready && !installed
@@ -672,6 +677,9 @@ struct StatusView: View {
             lines.append(path)
         } else if row.copy != .unsupported {
             lines.append(String(localized: "CrossOver app not found."))
+        }
+        if let note = Self.directXLimitNote(isDownloadable: row.isDownloadable) {
+            lines.append(note)
         }
         if Self.directXNeedsRepair(isDownloadable: row.isDownloadable, copy: row.copy, installed: dxvkInstalled) {
             lines.append(String(localized: "DirectX 11 layer not installed."))

@@ -2847,6 +2847,22 @@
         }
       }
     },
+    "DirectX 12 and DirectX 9 games are not supported on this runtime." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DirectX 12 and DirectX 9 games are not supported on this runtime."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DirectX 12 and DirectX 9 games are not supported on this runtime."
+          }
+        }
+      }
+    },
     "Download Wine" : {
       "localizations" : {
         "it" : {

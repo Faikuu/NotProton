@@ -233,4 +233,11 @@ struct DXVKLayerTests {
         #expect(!StatusView.directXNeedsRepair(isDownloadable: true, copy: .unpatched, installed: false))
         #expect(!StatusView.directXNeedsRepair(isDownloadable: false, copy: .ready, installed: false))
     }
+
+    @Test("Only the downloaded Wine's row states the DirectX limits")
+    func limitNoteAppearsOnlyForTheFreeWine() {
+        #expect(StatusView.directXLimitNote(isDownloadable: true)
+            == "DirectX 12 and DirectX 9 games are not supported on this runtime.")
+        #expect(StatusView.directXLimitNote(isDownloadable: false) == nil)
+    }
 }

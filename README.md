@@ -27,7 +27,7 @@ No game has been run on this Wine yet, so treat it as experimental: the Windows 
 
 Graphics:
 - DirectX 11 games work through DXVK. NotProton downloads it with the Wine (about 3 MB) and copies it into each game's prefix at launch. This was checked with a Direct3D 11 test program, not yet with a game.
-- Vulkan games work through MoltenVK. This was checked with a Vulkan device probe.
+- Vulkan works through MoltenVK at the device level, checked with a probe. No Vulkan game has been run on this runtime yet.
 - DirectX 12 and DirectX 9 games are not supported on this runtime.
 
 It has limits:
