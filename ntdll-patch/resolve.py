@@ -353,6 +353,28 @@ def resolve_amd64(pe):
             'hookRVA': hook.address, 'stolen': hook.bytes.hex(), 'insn': f"{hook.mnemonic} {hook.op_str}"}
 
 
+STACK_REGS = {'rsp', 'esp', 'sp', 'spl'}
+FRAME_REGS = {'rbp', 'ebp', 'bp', 'bpl'}
+
+
+def writes_reg(i, regs):
+    """True when the instruction can overwrite one of regs. The guards use this rather than a
+    list of mnemonics, so a write the list never thought of still fails them."""
+    if i.mnemonic in ('cmp', 'test', 'push', 'call', 'ret', 'nop') or i.mnemonic.startswith('j'):
+        return False
+    if i.mnemonic in ('leave', 'enter'):
+        return True
+    ops = [o.strip() for o in i.op_str.split(',')]
+    return any(o in regs for o in (ops if i.mnemonic in ('xchg', 'xadd', 'cmpxchg') else ops[:1]))
+
+
+def slot_text(reg, offset):
+    """How capstone spells the memory operand [reg + offset]."""
+    if offset == 0:
+        return f'[{reg}]'
+    return f'[{reg} - {-offset:#x}]' if offset < 0 else f'[{reg} + {offset:#x}]'
+
+
 def amd64_load_path(pe, body, hook):
     """Frame slot holding the load_path argument, read as [rsp+N] at the hook."""
     # Neither build keeps the argument in rcx. One spills it to the stack right away,
@@ -397,20 +419,19 @@ def amd64_load_path(pe, body, hook):
     # a second write to it would mean the slot is reused for something else. A frame pointer
     # adds its own way to go wrong: rbp has to keep pointing where the slot was worked out.
     lo = frame_at if via_rbp else stored_at
-    rbp_slot = frame - slot if via_rbp else None
+    homes = [slot_text('rsp', slot)] + ([slot_text('rbp', slot - frame)] if via_rbp else [])
     for i in body:
         if not lo < i.address < hook:
             continue
-        if i.mnemonic in ('push', 'pop') or (i.mnemonic in ('sub', 'add') and i.op_str.startswith('rsp,')):
+        if i.mnemonic in ('push', 'pop') or writes_reg(i, STACK_REGS):
             raise SystemExit(f"{pe.path}: rsp moves at {i.address:#x}, load_path slot not rsp-stable")
-        if via_rbp and i.op_str.startswith('rbp,') and i.mnemonic in ('lea', 'mov', 'add', 'sub', 'xchg', 'pop'):
+        if via_rbp and writes_reg(i, FRAME_REGS):
             raise SystemExit(f"{pe.path}: rbp changes at {i.address:#x}, load_path slot not rbp-stable")
         if i.address <= stored_at:
             continue
-        if i.mnemonic == 'mov' and i.op_str.startswith(f'qword ptr [rsp + {slot:#x}],'):
-            raise SystemExit(f"{pe.path}: load_path slot rewritten at {i.address:#x}")
-        if via_rbp and i.mnemonic == 'mov' and i.op_str.startswith(
-                f'qword ptr [rbp {"-" if rbp_slot > 0 else "+"} {abs(rbp_slot):#x}],'):
+        # Any write to the slot, whatever its width or mnemonic, reuses it.
+        dest = i.op_str.split(',')[0]
+        if i.mnemonic not in ('cmp', 'test') and any(h in dest for h in homes):
             raise SystemExit(f"{pe.path}: load_path slot rewritten at {i.address:#x}")
     return slot
 
