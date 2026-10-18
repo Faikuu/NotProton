@@ -22,10 +22,10 @@ func isolatedValveDownloads(in work: URL) throws -> URL {
     return downloads
 }
 
-// A downloaded Wine that is not pinned in SupportedRunners, as it is until the real entry lands.
+// A downloaded Wine that is deliberately not pinned in SupportedRunners (the real one is 11.15).
 let fixtureWine = RunnerBuild(
-    bundleVersion: "11.15",
-    releaseVersion: "11.15",
+    bundleVersion: "99.0",
+    releaseVersion: "99.0",
     flavor: "wine",
     loaderSHA256: String(repeating: "b", count: 64),
     cleanNtdll: [.x86_64Windows: String(repeating: "1", count: 64)],

@@ -43,13 +43,13 @@ struct CrossOverRowTests {
 
         let made = rows([release], installed: [Self.release], downloadable: [Self.wine])
 
-        #expect(made.map(\.buildID) == [Self.release.id, "11.15-wine"])
+        #expect(made.map(\.buildID) == [Self.release.id, "99.0-wine"])
         let row = made[1]
         #expect(row.copy == .none)
         #expect(row.isDownloadable)
         #expect(row.install == nil)
         #expect(!row.canSetUp)
-        #expect(row.title == "Wine 11.15 (free)")
+        #expect(row.title == "Wine 99.0 (free)")
         #expect(!made[0].isDownloadable)
 
         // Without the argument the rows are what they always were.
@@ -61,7 +61,7 @@ struct CrossOverRowTests {
         let made = rows([], installed: [Self.wine], downloadable: [Self.wine])
 
         #expect(made.count == 1)
-        #expect(made[0].buildID == "11.15-wine")
+        #expect(made[0].buildID == "99.0-wine")
         #expect(made[0].copy == .ready)
         #expect(made[0].isDownloadable)
     }
@@ -78,7 +78,7 @@ struct CrossOverRowTests {
         #expect([ready, unpatched, damaged].allSatisfy { $0.count == 1 })
         #expect([ready[0], unpatched[0], damaged[0]].map(\.copy) == [.ready, .unpatched, .damaged])
         for row in [ready[0], unpatched[0], damaged[0]] {
-            #expect(row.title == "Wine 11.15 (free)")
+            #expect(row.title == "Wine 99.0 (free)")
             #expect(row.isDownloadable)
             #expect(row.install == nil)
             #expect(!row.canSetUp)
