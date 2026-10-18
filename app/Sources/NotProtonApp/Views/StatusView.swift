@@ -581,8 +581,8 @@ struct StatusView: View {
             StatusRow(
                 title: "CrossOver",
                 value: tone == .bad
-                    ? String(localized: "Not found. Supported: \(Self.crossOverVersions).")
-                    : String(localized: "Not found. Supported: \(Self.crossOverVersions). The free Wine below works without it."),
+                    ? String(localized: "Not found. Supported: \(SupportedRunners.versionList).")
+                    : String(localized: "Not found. Supported: \(SupportedRunners.versionList). The free Wine below works without it."),
                 tone: tone
             )
         }
@@ -628,17 +628,9 @@ struct StatusView: View {
         return rows.isEmpty ? .bad : .neutral
     }
 
-    // The downloaded Wine is pinned in SupportedRunners too, but it is not a CrossOver version.
-    private static var crossOverVersions: String {
-        var seen = Set<String>()
-        return SupportedRunners.all.filter { !$0.isDownloadedWine }.map(\.releaseVersion)
-            .filter { seen.insert($0).inserted }
-            .joined(separator: ", ")
-    }
-
     private func crossOverValue(_ row: CrossOverRow) -> String {
         if let version = row.unsupportedVersion {
-            return String(localized: "Version \(version) not supported (supported: \(Self.crossOverVersions))")
+            return String(localized: "Version \(version) not supported (supported: \(SupportedRunners.versionList))")
         }
         let build = String(localized: "Build \(SupportedRunners.displayVersion(forID: row.buildID))")
         switch row.copy {

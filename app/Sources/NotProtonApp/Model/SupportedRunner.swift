@@ -127,6 +127,7 @@ enum SupportedRunners {
         legacyToolName, "notproton-fex", "notproton-fex-rosetta", "notproton-preview",
         "notproton-fex-41069", "notproton-fex-rosetta-41069", "notproton-preview-41069",
         "notproton-fex-41073", "notproton-fex-rosetta-41073", "notproton-preview-41073", "notproton-26.3",
+        "notproton-wine-11.15",
     ]
 
     static let legacyToolName = "notproton"
@@ -307,6 +308,31 @@ enum SupportedRunners {
                 CompatTool(name: "notproton-fex-rosetta-41073", flavor: .rosetta, display: "CrossOver 2026 10 15-ARM64 - Rosetta"),
             ]
         ),
+        RunnerBuild(
+            bundleVersion: "11.15",
+            releaseVersion: "11.15",
+            flavor: "wine",
+            loaderSHA256: "8aa25e55f28a0634a7df04c02dd719d4bc20de645cf42b9ba7d0e3b7d8f66a80",
+            cleanNtdll: [
+                .x86_64Windows: "682181234a55f5b7eed5b2ffa691fbdef1b488734337ef67ea7b5ce17adf43a2",
+                .i386Windows: "49396e7ad804a5345b1b968d02fdb6697ddbb7428e61e20e62806c50c37589d1",
+            ],
+            patchedNtdll: [
+                .x86_64Windows: "3116a185ecd54762dc6ebca814c23c11f0b65732d8852d26c5b228252ec726c0",
+                .i386Windows: "88f9a1d16dd7127100eab902156390ec2a5ec67770cfddd3fd3f1237c9965309",
+            ],
+            tools: [
+                CompatTool(name: "notproton-wine-11.15", flavor: .rosetta, display: "Wine 11.15 (free)"),
+            ],
+            origin: .downloadedWine(WineDownload(
+                file: "wine-devel-11.15-osx64.tar.xz",
+                sha256: "3f8e89a4874953a69e7be3dcdcc262d0346e462a9374bd116770fffb9e2a99d2",
+                bases: [URL(string: "https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.15/")!],
+                rootInArchive: "Wine Devel.app/Contents/Resources/wine",
+                approximateBytes: 191_398_232,
+                requiredFreeBytes: 1_200_000_000
+            ))
+        ),
     ]
 
     static var downloadable: [RunnerBuild] { all.filter(\.isDownloadedWine) }
@@ -323,9 +349,10 @@ enum SupportedRunners {
         build(id: id)?.displayVersion ?? id
     }
 
+    // CrossOver versions only. The downloaded Wine is pinned here too but is not one.
     static var versionList: String {
         var seen = Set<String>()
-        return all.map(\.releaseVersion)
+        return all.filter { !$0.isDownloadedWine }.map(\.releaseVersion)
             .filter { seen.insert($0).inserted }
             .joined(separator: ", ")
     }

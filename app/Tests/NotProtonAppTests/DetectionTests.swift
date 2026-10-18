@@ -267,13 +267,15 @@ struct DownloadedWineBuildTests {
 
     @Test("A CrossOver build is never a download")
     func crossOverIsNotDownloadable() throws {
-        for build in SupportedRunners.all {
+        let crossOver = SupportedRunners.all.filter { $0.id != Self.wineID }
+        #expect(!crossOver.isEmpty)
+        for build in crossOver {
             #expect(build.origin == .crossOver)
             #expect(build.download == nil)
             #expect(!build.isDownloadedWine)
             #expect(build.title.hasPrefix("CrossOver "))
         }
-        let first = try #require(SupportedRunners.all.first)
+        let first = try #require(crossOver.first)
         #expect(first.title == "CrossOver \(first.displayVersion)")
     }
 
@@ -294,8 +296,62 @@ struct DownloadedWineBuildTests {
         #expect(rebuilt.isDownloadedWine)
     }
 
-    @Test("Nothing is downloadable until a Wine build is pinned")
-    func downloadableIsEmptyToday() {
-        #expect(SupportedRunners.downloadable == [])
+    static let wineID = "11.15-wine"
+
+    @Test("The free Wine build is pinned and tooled as specified")
+    func wineBuildPinned() throws {
+        let build = try #require(SupportedRunners.build(id: Self.wineID))
+        #expect(build.isDownloadedWine)
+        #expect(build.loaderSHA256 == "8aa25e55f28a0634a7df04c02dd719d4bc20de645cf42b9ba7d0e3b7d8f66a80")
+        #expect(build.cleanNtdll[.x86_64Windows] == "682181234a55f5b7eed5b2ffa691fbdef1b488734337ef67ea7b5ce17adf43a2")
+        #expect(build.cleanNtdll[.i386Windows] == "49396e7ad804a5345b1b968d02fdb6697ddbb7428e61e20e62806c50c37589d1")
+        #expect(build.cleanNtdll[.aarch64Windows] == nil)
+        #expect(build.tools.map(\.name) == ["notproton-wine-11.15"])
+        #expect(build.tools.first?.flavor == .rosetta)
+        let download = try #require(build.download)
+        #expect(download.file == "wine-devel-11.15-osx64.tar.xz")
+        #expect(download.sha256 == "3f8e89a4874953a69e7be3dcdcc262d0346e462a9374bd116770fffb9e2a99d2")
+        #expect(download.rootInArchive == "Wine Devel.app/Contents/Resources/wine")
+        #expect(download.bases.map(\.absoluteString)
+            == ["https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.15/"])
+        #expect(build.title == "Wine 11.15 (free)")
+    }
+
+    @Test("Only the free Wine is downloadable, and its loader hash finds it")
+    func onlyWineIsDownloadable() throws {
+        #expect(SupportedRunners.downloadable.map(\.id) == [Self.wineID])
+        let found = try #require(SupportedRunners.build(loaderSHA256: SupportedRunners.downloadable[0].loaderSHA256))
+        #expect(found.origin == SupportedRunners.downloadable[0].origin)
+    }
+
+    @Test("The free Wine tool ranks after every CrossOver tool")
+    func wineRanksLast() {
+        let names = SupportedRunners.tools(for: SupportedRunners.all, fexAvailable: true).map(\.name)
+        #expect(names.last == "notproton-wine-11.15")
+        #expect(names.count == Set(names).count)
+    }
+
+    @Test("The free Wine is not listed as a CrossOver version")
+    func versionListLeavesWineOut() {
+        #expect(!SupportedRunners.versionList.contains("11.15"))
+        #expect(SupportedRunners.versionList.contains("26.3"))
+    }
+
+    // Opt in: NP_WINE_ROOT names an extracted Gcenx wine-devel 11.15 (Contents/Resources/wine).
+    // The real patcher must turn the real clean ntdlls into the pinned patched hashes.
+    @Test("The patcher reproduces the pinned patched ntdlls from a real 11.15",
+          .enabled(if: ProcessInfo.processInfo.environment["NP_WINE_ROOT"] != nil))
+    func patchedNtdllReproduces() throws {
+        let root = URL(filePath: try #require(ProcessInfo.processInfo.environment["NP_WINE_ROOT"]))
+        let build = try #require(SupportedRunners.build(id: Self.wineID))
+        let work = try scratchDirectory("wine-ntdll")
+        defer { try? FileManager.default.removeItem(at: work) }
+        for arch in [WineArch.x86_64Windows, .i386Windows] {
+            let patch = try #require(NtdllPatcher.patch(for: arch, in: build))
+            let output = work.appending(path: "\(arch.rawValue).dll")
+            let hash = try NtdllPatcher.write(
+                patch, build: build, from: NtdllPatcher.cleanSource(inRoot: root, arch: arch), to: output)
+            #expect(hash == build.patchedNtdll[arch])
+        }
     }
 }
