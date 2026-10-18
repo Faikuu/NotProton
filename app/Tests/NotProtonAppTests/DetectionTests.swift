@@ -233,3 +233,69 @@ struct SupportPathTests {
             == "/Applications/Steam.app/Contents/Info.plist")
     }
 }
+
+@Suite("Downloaded Wine build")
+struct DownloadedWineBuildTests {
+
+    static let download = WineDownload(
+        file: "wine-fixture.tar.xz",
+        sha256: String(repeating: "a", count: 64),
+        bases: [URL(string: "https://example.invalid/wine")!],
+        rootInArchive: "wine-fixture",
+        approximateBytes: 191_398_232,
+        requiredFreeBytes: 1_200_000_000
+    )
+
+    static let rebuiltLoader = String(repeating: "c", count: 64)
+
+    static let wine = RunnerBuild(
+        bundleVersion: "99.0-wine",
+        releaseVersion: "99.0",
+        flavor: "wine",
+        loaderSHA256: String(repeating: "b", count: 64),
+        cleanNtdll: [.x86_64Windows: String(repeating: "1", count: 64)],
+        patchedNtdll: [.x86_64Windows: String(repeating: "2", count: 64)],
+        rebuilds: [
+            RunnerRebuild(
+                loaderSHA256: rebuiltLoader,
+                cleanNtdll: [.x86_64Windows: String(repeating: "3", count: 64)],
+                patchedNtdll: [.x86_64Windows: String(repeating: "4", count: 64)]
+            ),
+        ],
+        origin: .downloadedWine(download)
+    )
+
+    @Test("A CrossOver build is never a download")
+    func crossOverIsNotDownloadable() throws {
+        for build in SupportedRunners.all {
+            #expect(build.origin == .crossOver)
+            #expect(build.download == nil)
+            #expect(!build.isDownloadedWine)
+            #expect(build.title.hasPrefix("CrossOver "))
+        }
+        let first = try #require(SupportedRunners.all.first)
+        #expect(first.title == "CrossOver \(first.displayVersion)")
+    }
+
+    @Test("A downloaded Wine build carries its download, title and flavor name")
+    func wineBuildDescribesItself() {
+        let build = Self.wine
+        #expect(build.isDownloadedWine)
+        #expect(build.download == Self.download)
+        #expect(build.title == "Wine 99.0 (free)")
+        #expect(build.flavorName == "Wine")
+    }
+
+    @Test("A rebuild keeps the origin of the build it came from")
+    func originSurvivesRebuild() throws {
+        let rebuilt = try #require(Self.wine.matching(loaderSHA256: Self.rebuiltLoader))
+        #expect(rebuilt.loaderSHA256 == Self.rebuiltLoader)
+        #expect(rebuilt.origin == .downloadedWine(Self.download))
+        #expect(rebuilt.isDownloadedWine)
+    }
+
+    @Test("Nothing is downloadable until a Wine build is pinned")
+    func downloadableIsEmptyToday() {
+        #expect(SupportedRunners.downloadable == [])
+    }
+}

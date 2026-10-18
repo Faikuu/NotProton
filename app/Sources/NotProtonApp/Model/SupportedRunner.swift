@@ -11,6 +11,23 @@ enum WineArch: String, Sendable, CaseIterable {
     case aarch64Windows = "aarch64-windows"
 }
 
+// Where a free Wine build is fetched from. The archive is verified against sha256 before
+// anything is unpacked, and rootInArchive is the directory inside it that holds the runner.
+struct WineDownload: Sendable, Equatable {
+    let file: String
+    let sha256: String
+    let bases: [URL]
+    let rootInArchive: String
+    let approximateBytes: Int64
+    // The archive plus its extracted tree, with a margin.
+    let requiredFreeBytes: Int64
+}
+
+enum RunnerOrigin: Sendable, Equatable {
+    case crossOver
+    case downloadedWine(WineDownload)
+}
+
 struct RunnerBuild: Sendable, Equatable, Identifiable {
     // CFBundleVersion, which also names the directory under runners/ and keys
     // the ntdll hash tables. Changing it orphans an installed runner.
@@ -32,6 +49,9 @@ struct RunnerBuild: Sendable, Equatable, Identifiable {
 
     var rebuilds: [RunnerRebuild] = []
 
+    // Declared last so the memberwise inits that predate it keep compiling.
+    var origin: RunnerOrigin = .crossOver
+
     var id: String { flavor.map { "\(bundleVersion)-\($0)" } ?? bundleVersion }
 
     func matching(loaderSHA256 hash: String) -> RunnerBuild? {
@@ -40,11 +60,23 @@ struct RunnerBuild: Sendable, Equatable, Identifiable {
         return RunnerBuild(
             bundleVersion: bundleVersion, releaseVersion: releaseVersion, flavor: flavor,
             loaderSHA256: rebuild.loaderSHA256, cleanNtdll: rebuild.cleanNtdll,
-            patchedNtdll: rebuild.patchedNtdll, tools: tools, rebuilds: rebuilds
+            patchedNtdll: rebuild.patchedNtdll, tools: tools, rebuilds: rebuilds, origin: origin
         )
     }
 
-    var flavorName: String { flavor?.uppercased() ?? "Rosetta" }
+    var download: WineDownload? {
+        if case .downloadedWine(let download) = origin { download } else { nil }
+    }
+
+    var isDownloadedWine: Bool { download != nil }
+
+    var flavorName: String {
+        isDownloadedWine ? "Wine" : flavor?.uppercased() ?? "Rosetta"
+    }
+
+    var title: String {
+        isDownloadedWine ? "Wine \(releaseVersion) (free)" : "CrossOver \(displayVersion)"
+    }
 
     var displayVersion: String { "\(releaseVersion) \(flavorName)" }
 }
@@ -276,6 +308,8 @@ enum SupportedRunners {
             ]
         ),
     ]
+
+    static var downloadable: [RunnerBuild] { all.filter(\.isDownloadedWine) }
 
     static func build(loaderSHA256 hash: String) -> RunnerBuild? {
         all.lazy.compactMap { $0.matching(loaderSHA256: hash) }.first
