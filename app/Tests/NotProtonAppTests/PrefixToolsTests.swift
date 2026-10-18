@@ -359,6 +359,9 @@ struct PrefixToolsTests {
         #expect(!calls.isEmpty)
         for call in calls {
             let rest = source[call.upperBound...]
+            // The DirectX layer alert continues the launch on purpose: a game without the
+            // layer still starts, and only its Direct3D 11 part fails. Every other alert exits.
+            if rest.hasPrefix("DirectX 11 layer is missing\"") { continue }
             let line = try #require(rest.firstIndex(of: "\n"))
             let next = rest[rest.index(after: line)...].prefix { $0 != "\n" }
             #expect(next.trimmingCharacters(in: .whitespaces) == "exit 1")
