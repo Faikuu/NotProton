@@ -59,6 +59,9 @@ enum SupportPaths {
         bundle.appending(path: "Contents/SharedSupport/CrossOver")
     }
 
+    // The downloaded Wine lands here too, under the old crossover-<id>/CrossOver name, since
+    // the run script's CX_ROOT, the prefix-template regex, pruning and Steam's tool list all
+    // expect that layout. Renaming it is follow-up work.
     static func clonedRoot(forBuild build: String, runners: URL = SupportPaths.runners) -> URL {
         runnerRoot(forBuild: build, runners: runners).appending(path: "CrossOver")
     }
