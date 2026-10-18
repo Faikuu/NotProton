@@ -51,3 +51,62 @@ struct DXVKLayer: Sendable, Equatable {
         ]
     )
 }
+
+extension DXVKLayer {
+    static let step = String(localized: "Download DirectX layer")
+
+    // Downloads the archive (or reuses the verified copy), checks every DLL against its pin, and
+    // only then moves the layer into place. Nothing partial is left under root.
+    func run(
+        downloads: URL = SupportPaths.dxvkDownloads,
+        root: URL = SupportPaths.dxvk,
+        session: URLSession = PinnedDownload.session,
+        availableBytes: (URL) -> Int64? = WineFetcher.availableBytes(at:),
+        report: @Sendable (String) -> Void = { _ in }
+    ) async throws {
+        if installed(in: root) { return }
+
+        let fm = FileManager.default
+        if let free = availableBytes(WineFetcher.nearestExisting(root)), free < download.requiredFreeBytes {
+            let needed = ByteCountFormatter.string(fromByteCount: download.requiredFreeBytes, countStyle: .file)
+            throw StepFailure(
+                step: Self.step,
+                detail: String(localized: "Not enough free disk space. Setting up the DirectX layer needs \(needed).")
+            )
+        }
+
+        let archive = try await PinnedDownload.obtain(
+            file: download.file, sha256: download.sha256, bases: download.bases,
+            into: downloads, step: Self.step, from: "GitHub", session: session
+        ) { progress in report(progress.label) }
+
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        let extract = root.appending(path: ".dxvk-extract")
+        try? fm.removeItem(at: extract)
+        defer { try? fm.removeItem(at: extract) }
+        try fm.createDirectory(at: extract, withIntermediateDirectories: true)
+
+        report(String(localized: "Unpacking the DirectX layer"))
+        let untar = try Shell.run(
+            "/usr/bin/tar",
+            ["-xf", archive.path(percentEncoded: false), "-C", extract.path(percentEncoded: false)])
+        guard untar.succeeded else {
+            throw StepFailure(
+                step: Self.step,
+                detail: String(localized: "Unpacking \(archive.lastPathComponent) failed. \(untar.stderr.trimmingCharacters(in: .whitespacesAndNewlines))")
+            )
+        }
+
+        let unpacked = extract.appending(path: directoryName)
+        for file in files where Digest.sha256IfPresent(unpacked.appending(path: file.archivePath)) != file.sha256 {
+            AppLog.note("dxvk fetch: \(file.archivePath) does not match its pin")
+            throw StepFailure(
+                step: Self.step,
+                detail: String(localized: "Something is wrong with the downloaded files. Please check for a NotProton update.")
+            )
+        }
+
+        report(String(localized: "Installing the DirectX layer"))
+        try RunnerInstaller.swapIn(staging: unpacked, target: directory(in: root))
+    }
+}

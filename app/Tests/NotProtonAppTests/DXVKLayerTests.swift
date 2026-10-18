@@ -67,4 +67,161 @@ struct DXVKLayerTests {
         #expect(SupportPaths.dxvk.path(percentEncoded: false).hasSuffix("notproton/dxvk"))
         #expect(SupportPaths.dxvkDownloads.path(percentEncoded: false).hasSuffix("Library/Caches/notproton/dxvk"))
     }
+
+    // A tiny .tar.gz laid out like the real archive, with a layer whose pins are that archive's own
+    // hashes. pinnedText replaces the text a file is pinned to, to make a DLL that does not match.
+    private static let root = "dxvk-fixture"
+    private static let file = "dxvk-fixture.tar.gz"
+    private static let texts: [String: String] = [
+        "x64/d3d11.dll": "x64 d3d11", "x64/d3d10core.dll": "x64 d3d10core",
+        "x32/d3d11.dll": "x32 d3d11", "x32/d3d10core.dll": "x32 d3d10core",
+    ]
+
+    private struct Fixture {
+        let work: URL
+        let downloads: URL
+        let host: URL
+        let root: URL
+        let layer: DXVKLayer
+    }
+
+    private func makeFixture(pinnedText: [String: String] = [:], requiredFreeBytes: Int64 = 1_000) throws -> Fixture {
+        let work = try scratchDirectory("dxvk-layer")
+        let tree = work.appending(path: "tree")
+        for (path, text) in Self.texts {
+            let file = tree.appending(path: Self.root).appending(path: path)
+            try FileManager.default.createDirectory(
+                at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: file)
+        }
+
+        let host = work.appending(path: "host")
+        try FileManager.default.createDirectory(at: host, withIntermediateDirectories: true)
+        let archive = host.appending(path: Self.file)
+        try Shell.check(
+            "/usr/bin/tar",
+            ["-czf", archive.path(percentEncoded: false), "-C", tree.path(percentEncoded: false), Self.root])
+
+        let files = ["x64/d3d11.dll", "x64/d3d10core.dll", "x32/d3d11.dll", "x32/d3d10core.dll"].map { path in
+            DXVKFile(
+                archivePath: path,
+                prefixDirectory: path.hasPrefix("x64") ? "system32" : "syswow64",
+                name: String(path.split(separator: "/").last ?? ""),
+                sha256: Digest.sha256(of: Data((pinnedText[path] ?? Self.texts[path]!).utf8))
+            )
+        }
+        let layer = DXVKLayer(
+            download: WineDownload(
+                file: Self.file,
+                sha256: try #require(Digest.sha256IfPresent(archive)),
+                bases: [host],
+                rootInArchive: Self.root,
+                approximateBytes: 1_000,
+                requiredFreeBytes: requiredFreeBytes
+            ),
+            files: files
+        )
+        return Fixture(
+            work: work, downloads: work.appending(path: "downloads"), host: host,
+            root: work.appending(path: "dxvk"), layer: layer)
+    }
+
+    @Test("A good archive is installed, and nothing is left beside it")
+    func installsAGoodArchive() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.work) }
+
+        try await fixture.layer.run(
+            downloads: fixture.downloads, root: fixture.root, availableBytes: { _ in 1_000_000_000 })
+
+        #expect(fixture.layer.installed(in: fixture.root))
+        let entries = try FileManager.default.contentsOfDirectory(
+            at: fixture.root, includingPropertiesForKeys: nil).map(\.lastPathComponent)
+        #expect(entries == [fixture.layer.directoryName])
+    }
+
+    @Test("A tampered archive installs nothing and leaves no download behind")
+    func tamperedArchiveInstallsNothing() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.work) }
+        try Data("not the layer".utf8).write(to: fixture.host.appending(path: Self.file))
+
+        await #expect(throws: StepFailure.self) {
+            try await fixture.layer.run(
+                downloads: fixture.downloads, root: fixture.root, availableBytes: { _ in 1_000_000_000 })
+        }
+
+        #expect(!fixture.layer.installed(in: fixture.root))
+        #expect(!FileManager.default.fileExists(
+            atPath: fixture.downloads.appending(path: Self.file).path(percentEncoded: false)))
+    }
+
+    @Test("An archive whose DLL does not match its pin installs nothing")
+    func wrongDLLInsideTheArchiveInstallsNothing() async throws {
+        let fixture = try makeFixture(pinnedText: ["x64/d3d10core.dll": "not the real dll"])
+        defer { try? FileManager.default.removeItem(at: fixture.work) }
+
+        await #expect(throws: StepFailure.self) {
+            try await fixture.layer.run(
+                downloads: fixture.downloads, root: fixture.root, availableBytes: { _ in 1_000_000_000 })
+        }
+
+        #expect(!fixture.layer.installed(in: fixture.root))
+        let staging = try? FileManager.default.contentsOfDirectory(
+            at: fixture.root, includingPropertiesForKeys: nil)
+        #expect((staging ?? []).isEmpty)
+    }
+
+    @Test("An installed layer is left alone, with no network access")
+    func alreadyInstalledIsNoOp() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.work) }
+        try await fixture.layer.run(
+            downloads: fixture.downloads, root: fixture.root, availableBytes: { _ in 1_000_000_000 })
+
+        // The base is an empty folder, so any attempt to download would fail.
+        let empty = fixture.work.appending(path: "empty-host")
+        try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+        let offline = DXVKLayer(
+            download: WineDownload(
+                file: fixture.layer.download.file,
+                sha256: fixture.layer.download.sha256,
+                bases: [empty],
+                rootInArchive: fixture.layer.download.rootInArchive,
+                approximateBytes: fixture.layer.download.approximateBytes,
+                requiredFreeBytes: fixture.layer.download.requiredFreeBytes
+            ),
+            files: fixture.layer.files
+        )
+        try await offline.run(
+            downloads: fixture.work.appending(path: "other-downloads"), root: fixture.root,
+            availableBytes: { _ in 1_000_000_000 })
+
+        #expect(offline.installed(in: fixture.root))
+    }
+
+    @Test("Too little free space is refused before anything is downloaded")
+    func lowDiskIsRefusedBeforeDownload() async throws {
+        let fixture = try makeFixture(requiredFreeBytes: 1_000)
+        defer { try? FileManager.default.removeItem(at: fixture.work) }
+
+        await #expect(throws: StepFailure.self) {
+            try await fixture.layer.run(
+                downloads: fixture.downloads, root: fixture.root, availableBytes: { _ in 1 })
+        }
+
+        #expect(!FileManager.default.fileExists(atPath: fixture.downloads.path(percentEncoded: false)))
+    }
+
+    @Test("The real archive downloads, verifies and installs",
+          .enabled(if: ProcessInfo.processInfo.environment["NOTPROTON_TEST_WINE_DOWNLOAD"] == "1"))
+    func realArchiveDownloads() async throws {
+        let work = try scratchDirectory("dxvk-real")
+        defer { try? FileManager.default.removeItem(at: work) }
+        let root = work.appending(path: "dxvk")
+
+        try await DXVKLayer.pinned.run(downloads: work.appending(path: "downloads"), root: root)
+
+        #expect(DXVKLayer.pinned.installed(in: root))
+    }
 }

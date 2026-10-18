@@ -113,7 +113,7 @@ enum WineFetcher {
     }
 
     // The volume the runner will land on is decided by the closest folder that exists.
-    private static func nearestExisting(_ url: URL) -> URL {
+    static func nearestExisting(_ url: URL) -> URL {
         var probe = url
         while !FileManager.default.fileExists(atPath: probe.path(percentEncoded: false)),
               probe.pathComponents.count > 1 {
