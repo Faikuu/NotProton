@@ -55,7 +55,7 @@ class LoadPathGuards(unittest.TestCase):
 
     def test_rsp_changes_are_refused(self):
         for bad in ('lea rsp, [rsp - 8]', 'mov rsp, rbp', 'and rsp, -0x10', 'sub rsp, 8',
-                    'add rsp, 8', 'push rax', 'pop rax', 'xchg rsp, rax'):
+                    'add rsp, 8', 'push rax', 'pop rax', 'pushfq', 'popfq', 'xchg rsp, rax'):
             with self.subTest(bad):
                 self.refuses(bad)
 

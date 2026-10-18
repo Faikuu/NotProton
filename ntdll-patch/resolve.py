@@ -423,7 +423,7 @@ def amd64_load_path(pe, body, hook):
     for i in body:
         if not lo < i.address < hook:
             continue
-        if i.mnemonic in ('push', 'pop') or writes_reg(i, STACK_REGS):
+        if i.mnemonic.startswith(('push', 'pop')) or writes_reg(i, STACK_REGS):
             raise SystemExit(f"{pe.path}: rsp moves at {i.address:#x}, load_path slot not rsp-stable")
         if via_rbp and writes_reg(i, FRAME_REGS):
             raise SystemExit(f"{pe.path}: rbp changes at {i.address:#x}, load_path slot not rbp-stable")
