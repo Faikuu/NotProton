@@ -2703,6 +2703,150 @@
         }
       }
     },
+    "Download DirectX layer" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download DirectX layer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download DirectX layer"
+          }
+        }
+      }
+    },
+    "Downloading DirectX layer" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloading DirectX layer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloading DirectX layer"
+          }
+        }
+      }
+    },
+    "Unpacking the DirectX layer" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unpacking the DirectX layer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unpacking the DirectX layer"
+          }
+        }
+      }
+    },
+    "Installing the DirectX layer" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Installing the DirectX layer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Installing the DirectX layer"
+          }
+        }
+      }
+    },
+    "Not enough free disk space. Setting up the DirectX layer needs %@." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not enough free disk space. Setting up the DirectX layer needs %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not enough free disk space. Setting up the DirectX layer needs %@."
+          }
+        }
+      }
+    },
+    "DirectX 11 layer not installed." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DirectX 11 layer not installed."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DirectX 11 layer not installed."
+          }
+        }
+      }
+    },
+    "Download the DirectX 11 layer again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download the DirectX 11 layer again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download the DirectX 11 layer again."
+          }
+        }
+      }
+    },
+    "DirectX 11 layer ready." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DirectX 11 layer ready."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "DirectX 11 layer ready."
+          }
+        }
+      }
+    },
+    " DirectX 11 games also use DXVK, about 3 MB, free software under the zlib license. DirectX 12 and DirectX 9 games are not supported on this runtime." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " DirectX 11 games also use DXVK, about 3 MB, free software under the zlib license. DirectX 12 and DirectX 9 games are not supported on this runtime."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " DirectX 11 games also use DXVK, about 3 MB, free software under the zlib license. DirectX 12 and DirectX 9 games are not supported on this runtime."
+          }
+        }
+      }
+    },
     "Download Wine" : {
       "localizations" : {
         "it" : {

@@ -25,6 +25,7 @@ struct StatusSnapshot: Sendable {
     var orphanedRunners: [String] = []
     var damagedRunners: [String] = []
     var installContent: DeploymentContent.Status = .unchecked
+    var dxvkInstalled = false
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
         let installs = CrossOverSource.discover()
@@ -47,7 +48,8 @@ struct StatusSnapshot: Sendable {
             installedRunners: installed,
             orphanedRunners: RunnerStore.orphanedClones(),
             damagedRunners: RunnerStore.damagedClones(),
-            installContent: DeploymentContent.current(version: bundledVersion)
+            installContent: DeploymentContent.current(version: bundledVersion),
+            dxvkInstalled: DXVKLayer.pinned.installed(in: SupportPaths.dxvk)
         )
     }
 }
@@ -470,8 +472,26 @@ final class SystemStatus {
         progress: @escaping @Sendable (String) -> Void
     ) async throws -> RunnerSetup.Outcome {
         try await Task.detached(priority: .userInitiated) {
-            try await RunnerSetup.run(downloading: build, replacingExisting: replacingExisting, report: progress)
+            let outcome = try await RunnerSetup.run(
+                downloading: build, replacingExisting: replacingExisting, report: progress)
+            // Wine's own Direct3D 11 cannot create a device here, so the layer comes with it.
+            try await DXVKLayer.pinned.run(report: progress)
+            return outcome
         }.value
+    }
+
+    // Puts back the DirectX 11 layer a free Wine needs, without downloading Wine again.
+    func repairDirectX() async {
+        guard canInstall else { return }
+        await perform(from: String(localized: "Downloading DirectX layer")) { progress in
+            let lock = try DeploymentContent.acquireInstallationLock()
+            defer { lock.release() }
+            try await requireInstallableContent()
+            try await Task.detached(priority: .userInitiated) {
+                try await DXVKLayer.pinned.run(report: progress)
+            }.value
+            return String(localized: "DirectX 11 layer ready.")
+        }
     }
 
     func downloadWine(_ build: RunnerBuild? = SupportedRunners.downloadable.first) async {

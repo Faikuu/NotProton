@@ -224,4 +224,13 @@ struct DXVKLayerTests {
 
         #expect(DXVKLayer.pinned.installed(in: root))
     }
+
+    @Test("Only a downloaded Wine that is ready and missing the layer offers a repair")
+    func dxvkDetailAppearsOnlyForAMissingLayer() {
+        #expect(StatusView.directXNeedsRepair(isDownloadable: true, copy: .ready, installed: false))
+        #expect(!StatusView.directXNeedsRepair(isDownloadable: true, copy: .ready, installed: true))
+        #expect(!StatusView.directXNeedsRepair(isDownloadable: true, copy: .none, installed: false))
+        #expect(!StatusView.directXNeedsRepair(isDownloadable: true, copy: .unpatched, installed: false))
+        #expect(!StatusView.directXNeedsRepair(isDownloadable: false, copy: .ready, installed: false))
+    }
 }

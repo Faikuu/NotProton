@@ -316,9 +316,15 @@ struct StatusView: View {
         Task { await status.downloadWine() }
     }
 
+    // A downloaded Wine that is ready but has no DirectX 11 layer on disk is the only case with a repair.
+    nonisolated static func directXNeedsRepair(isDownloadable: Bool, copy: CrossOverRow.Copy, installed: Bool) -> Bool {
+        isDownloadable && copy == .ready && !installed
+    }
+
     private static var wineAbout: String {
         let size = SupportedRunners.downloadable.first?.download?.approximateBytes ?? 190_000_000
         return String(localized: "Wine is downloaded from Gcenx's macOS Wine builds on GitHub, about \(size.formatted(.byteCount(style: .file))). It is free software under the LGPL. It runs games through Rosetta only, without D3DMetal or DXMT, and its media codecs need GStreamer, which NotProton does not install.")
+            + String(localized: " DirectX 11 games also use DXVK, about 3 MB, free software under the zlib license. DirectX 12 and DirectX 9 games are not supported on this runtime.")
     }
 
     private func statusForm(_ snapshot: StatusSnapshot) -> some View {
@@ -592,9 +598,9 @@ struct StatusView: View {
                 title: row.title,
                 value: crossOverValue(row),
                 tone: crossOverTone(row),
-                detail: crossOverDetail(row, tools: tools),
+                detail: crossOverDetail(row, tools: tools, dxvkInstalled: snapshot.dxvkInstalled),
                 trailing: row.copy == .ready ? buildSize(row.buildID) : nil,
-                action: crossOverAction(row, prominent: snapshot.runner == .none),
+                action: crossOverAction(row, prominent: snapshot.runner == .none, dxvkInstalled: snapshot.dxvkInstalled),
                 menu: crossOverMenu(row)
             )
             .background {
@@ -651,7 +657,7 @@ struct StatusView: View {
         }
     }
 
-    private func crossOverDetail(_ row: CrossOverRow, tools: [InstalledTool]) -> String? {
+    private func crossOverDetail(_ row: CrossOverRow, tools: [InstalledTool], dxvkInstalled: Bool) -> String? {
         var lines: [String] = []
         if row.copy == .ready || row.copy == .unpatched {
             let names = tools.filter { $0.build == row.buildID }.map(\.display)
@@ -667,12 +673,22 @@ struct StatusView: View {
         } else if row.copy != .unsupported {
             lines.append(String(localized: "CrossOver app not found."))
         }
+        if Self.directXNeedsRepair(isDownloadable: row.isDownloadable, copy: row.copy, installed: dxvkInstalled) {
+            lines.append(String(localized: "DirectX 11 layer not installed."))
+        }
         return lines.isEmpty ? nil : lines.joined(separator: "\n")
     }
 
-    private func crossOverAction(_ row: CrossOverRow, prominent: Bool) -> StatusAction? {
+    private func crossOverAction(_ row: CrossOverRow, prominent: Bool, dxvkInstalled: Bool) -> StatusAction? {
         let install = row.install
         switch row.copy {
+        case .ready where Self.directXNeedsRepair(isDownloadable: row.isDownloadable, copy: row.copy, installed: dxvkInstalled):
+            return StatusAction(
+                label: String(localized: "Repair"),
+                isProminent: true,
+                help: String(localized: "Download the DirectX 11 layer again."),
+                isEnabled: status.canInstall
+            ) { Task { await status.repairDirectX() } }
         case .none where row.isDownloadable:
             return StatusAction(
                 label: String(localized: "Download & Set Up"),
