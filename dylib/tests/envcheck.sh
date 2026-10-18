@@ -140,6 +140,7 @@ probe() (
   USER=macuser; export USER
   eval "$stock"
   eval "$tmpl_fn"
+  # shellcheck disable=SC2329 # called by in_template_env, which is eval'd above
   without_lock_fds() { "$@"; }
   set --
   eval "$stock_fwd"
