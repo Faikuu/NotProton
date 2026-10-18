@@ -77,6 +77,11 @@ enum RunnerPatcher {
             }
         }
 
+        return wrong + loaderProblems(in: root)
+    }
+
+    static func loaderProblems(in root: URL) -> [String] {
+        var wrong: [String] = []
         for loader in unixLoaders(in: root) {
             let granted = entitlements(of: loader)
             if granted?.contains(restrictedEntitlement) == true {
@@ -87,7 +92,6 @@ enum RunnerPatcher {
                 wrong.append(String(localized: "\(name(of: loader)) is missing the dyld entitlement"))
             }
         }
-
         return wrong
     }
 
@@ -140,7 +144,7 @@ enum RunnerPatcher {
         return installed
     }
 
-    private static func grantLoaderEntitlement(root: URL) throws -> [String] {
+    static func grantLoaderEntitlement(root: URL) throws -> [String] {
         var signed: [String] = []
 
         for loader in unixLoaders(in: root) {
@@ -149,7 +153,9 @@ enum RunnerPatcher {
             if existing?.contains(dyldEntitlement) == true,
                signatureIsValid(signingTarget(for: loader)) { continue }
 
-            guard let existing, !existing.isEmpty else {
+            // nil means codesign could not read the loader at all. An empty answer is a
+            // signed loader with no entitlements, which is how the downloaded Wine ships.
+            guard let existing else {
                 throw StepFailure(
                     step: step,
                     detail: String(localized: "\(name(of: loader)) carries no entitlements to extend.")
@@ -195,20 +201,33 @@ enum RunnerPatcher {
         return result.stdout
     }
 
+    private static let emptyEntitlements = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict/>
+        </plist>
+
+        """
+
     private static func sign(_ loader: URL, addingTo existing: String) throws {
         let plist = FileManager.default.temporaryDirectory
             .appending(path: "np-entitlements-\(UUID().uuidString).plist")
         defer { try? FileManager.default.removeItem(at: plist) }
 
-        try Data(existing.utf8).write(to: plist)
+        let unentitled = existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        try Data((unentitled ? emptyEntitlements : existing).utf8).write(to: plist)
         _ = try Shell.run("/usr/libexec/PlistBuddy", [
             "-c", "Add :\(dyldEntitlement) bool true", plist.path(percentEncoded: false),
         ])
 
         try keepClean(loader)
         let target = signingTarget(for: loader)
-        let result = try Shell.run("/usr/bin/codesign", [
-            "-f", "-s", "-", "--options", "runtime",
+        // A loader without entitlements is not on the hardened runtime, and turning it on
+        // would make dyld refuse Wine's own ad-hoc signed ntdll.so. Off the hardened runtime
+        // dyld already honours DYLD_ variables; the entitlement keeps verify's check uniform.
+        let runtime = unentitled ? [] : ["--options", "runtime"]
+        let result = try Shell.run("/usr/bin/codesign", ["-f", "-s", "-"] + runtime + [
             "--entitlements", plist.path(percentEncoded: false),
             target.path(percentEncoded: false),
         ])

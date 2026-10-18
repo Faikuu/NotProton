@@ -142,6 +142,63 @@ struct RunnerPatcherTests {
         #expect(try Data(contentsOf: Clean.copy(of: file)) == Data(contentsOf: file))
     }
 
+    // The downloaded Wine's loader is ad-hoc signed with no entitlements at all, so there is
+    // nothing to extend; /usr/bin/true re-signed ad-hoc is the same shape.
+    private static func unentitledLoader(in root: URL) throws -> URL {
+        let loader = root.appending(path: "lib/wine/x86_64-unix/wine")
+        try FileManager.default.createDirectory(
+            at: loader.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: URL(filePath: "/usr/bin/true"), to: loader)
+        try #require(try Shell.run("/usr/bin/codesign", [
+            "-f", "-s", "-", loader.path(percentEncoded: false),
+        ]).status == 0)
+        let shown = try Shell.run("/usr/bin/codesign", [
+            "-d", "--entitlements", ":-", loader.path(percentEncoded: false),
+        ])
+        try #require(shown.status == 0)
+        try #require(shown.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        return loader
+    }
+
+    @Test("A signed loader with no entitlements gets the dyld one and keeps its original")
+    func unentitledLoaderGetsTheEntitlement() throws {
+        let root = try scratchDirectory("unentitled-loader")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let loader = try Self.unentitledLoader(in: root)
+        let original = Digest.sha256IfPresent(loader)
+
+        #expect(RunnerPatcher.loaderProblems(in: root) == ["x86_64-unix/wine is missing the dyld entitlement"])
+        #expect(try RunnerPatcher.grantLoaderEntitlement(root: root) == ["x86_64-unix/wine"])
+
+        let path = loader.path(percentEncoded: false)
+        let shown = try Shell.run("/usr/bin/codesign", ["-d", "--entitlements", ":-", path])
+        #expect(shown.stdout.contains("com.apple.security.cs.allow-dyld-environment-variables"))
+        #expect(try Shell.run("/usr/bin/codesign", ["--verify", "--strict", path]).status == 0)
+        // The hardened runtime would make dyld reject Wine's own ad-hoc signed libraries.
+        let details = try Shell.run("/usr/bin/codesign", ["-dvv", path])
+        let flags = (details.stdout + details.stderr).split(separator: "\n").first { $0.contains("flags=") }
+        #expect(flags?.contains("adhoc") == true)
+        #expect(flags?.contains("runtime") == false)
+
+        #expect(Clean.copy(of: loader) != loader)
+        #expect(Digest.sha256IfPresent(Clean.copy(of: loader)) == original)
+        #expect(RunnerPatcher.loaderProblems(in: root).isEmpty)
+        #expect(try RunnerPatcher.grantLoaderEntitlement(root: root).isEmpty)
+    }
+
+    @Test("A loader codesign cannot read is still refused")
+    func unreadableLoaderIsRefused() throws {
+        let root = try scratchDirectory("unsigned-loader")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let loader = root.appending(path: "lib/wine/x86_64-unix/wine")
+        try FileManager.default.createDirectory(
+            at: loader.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("not a Mach-O".utf8).write(to: loader)
+
+        #expect(throws: StepFailure.self) { try RunnerPatcher.grantLoaderEntitlement(root: root) }
+        #expect(try Data(contentsOf: loader) == Data("not a Mach-O".utf8))
+    }
+
     @Test("Loader discovery finds both the bare and the bundled layout")
     func loaderDiscoveryCoversBothLayouts() throws {
         let fm = FileManager.default
