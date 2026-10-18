@@ -18,8 +18,9 @@ struct CrossOverRow: Identifiable, Equatable {
     let licensed: Bool?
     let unsupportedVersion: String?
 
-    // Set on a row made from a downloadable build, which may not be pinned in SupportedRunners.
-    var offered: RunnerBuild?
+    // The build a copy-only row was made for, when it is not necessarily pinned in
+    // SupportedRunners (a downloadable build, or its installed copy).
+    let offered: RunnerBuild?
 
     var id: String { install?.id ?? buildID }
     var build: RunnerBuild? { offered ?? SupportedRunners.build(id: buildID) }
@@ -29,7 +30,7 @@ struct CrossOverRow: Identifiable, Equatable {
         return build?.title ?? "CrossOver \(SupportedRunners.displayVersion(forID: buildID))"
     }
 
-    var isDownloadable: Bool { install == nil && copy == .none && build?.isDownloadedWine == true }
+    var isDownloadable: Bool { install == nil && build?.isDownloadedWine == true }
 
     var canSetUp: Bool { install != nil && unsupportedVersion == nil }
     var isManual: Bool { install?.isManual ?? false }
@@ -50,6 +51,8 @@ struct CrossOverRow: Identifiable, Equatable {
     ) -> [CrossOverRow] {
         var rows: [CrossOverRow] = []
         var seen: Set<String> = []
+        var offered: [String: RunnerBuild] = [:]
+        for build in installed + downloadable { offered[build.id] = build }
 
         func copy(of build: String) -> Copy {
             if unpatched.contains(build) { return .unpatched }
@@ -64,11 +67,12 @@ struct CrossOverRow: Identifiable, Equatable {
                 guard seen.insert(build.id).inserted else { continue }
                 rows.append(CrossOverRow(
                     buildID: build.id, install: install, copy: copy(of: build.id),
-                    licensed: licenses[install.id]?.licensed, unsupportedVersion: nil
+                    licensed: licenses[install.id]?.licensed, unsupportedVersion: nil, offered: nil
                 ))
             case .unsupportedBuild(let version):
                 rows.append(CrossOverRow(
-                    buildID: "", install: install, copy: .none, licensed: nil, unsupportedVersion: version
+                    buildID: "", install: install, copy: .none, licensed: nil, unsupportedVersion: version,
+                    offered: nil
                 ))
             case .unreadable:
                 continue
@@ -78,12 +82,14 @@ struct CrossOverRow: Identifiable, Equatable {
         let copies = installed.map(\.id) + damaged
         for build in copies where seen.insert(build).inserted {
             rows.append(CrossOverRow(
-                buildID: build, install: nil, copy: copy(of: build), licensed: nil, unsupportedVersion: nil
+                buildID: build, install: nil, copy: copy(of: build), licensed: nil, unsupportedVersion: nil,
+                offered: offered[build]
             ))
         }
         for build in orphaned where seen.insert(build).inserted {
             rows.append(CrossOverRow(
-                buildID: build, install: nil, copy: .unsupported, licensed: nil, unsupportedVersion: nil
+                buildID: build, install: nil, copy: .unsupported, licensed: nil, unsupportedVersion: nil,
+                offered: nil
             ))
         }
         for build in downloadable where seen.insert(build.id).inserted {

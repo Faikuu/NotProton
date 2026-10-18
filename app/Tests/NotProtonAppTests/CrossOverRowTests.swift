@@ -9,15 +9,7 @@ struct CrossOverRowTests {
     private static let preview = SupportedRunners.all.first { $0.flavor == "fex" }!
     private static let release = SupportedRunners.all.first { $0.id == "26.3.0.39832" }!
 
-    private static let wine = RunnerBuild(
-        bundleVersion: "11.15",
-        releaseVersion: "11.15",
-        flavor: "wine",
-        loaderSHA256: String(repeating: "b", count: 64),
-        cleanNtdll: [.x86_64Windows: String(repeating: "1", count: 64)],
-        patchedNtdll: [.x86_64Windows: String(repeating: "2", count: 64)],
-        origin: .downloadedWine(DownloadedWineBuildTests.download)
-    )
+    private static let wine = fixtureWine
 
     private func install(_ name: String, _ build: RunnerBuild, root: String = "/Applications") -> CrossOverInstall {
         CrossOverInstall(bundle: URL(filePath: "\(root)/\(name).app"), releaseVersion: "x", support: .supported(build))
@@ -71,7 +63,26 @@ struct CrossOverRowTests {
         #expect(made.count == 1)
         #expect(made[0].buildID == "11.15-wine")
         #expect(made[0].copy == .ready)
-        #expect(!made[0].isDownloadable)
+        #expect(made[0].isDownloadable)
+    }
+
+    @Test("Every copy state of a wine build keeps its title and can be downloaded again")
+    func wineRowsKeepBuild() {
+        // The fixture is not pinned in SupportedRunners, so the rows must carry the build.
+        #expect(SupportedRunners.build(id: Self.wine.id) == nil)
+
+        let ready = rows([], installed: [Self.wine])
+        let unpatched = rows([], installed: [Self.wine], unpatched: [Self.wine.id])
+        let damaged = rows([], damaged: [Self.wine.id], downloadable: [Self.wine])
+
+        #expect([ready, unpatched, damaged].allSatisfy { $0.count == 1 })
+        #expect([ready[0], unpatched[0], damaged[0]].map(\.copy) == [.ready, .unpatched, .damaged])
+        for row in [ready[0], unpatched[0], damaged[0]] {
+            #expect(row.title == "Wine 11.15 (free)")
+            #expect(row.isDownloadable)
+            #expect(row.install == nil)
+            #expect(!row.canSetUp)
+        }
     }
 
     @Test("Each app gets its own row, tied to its own build")

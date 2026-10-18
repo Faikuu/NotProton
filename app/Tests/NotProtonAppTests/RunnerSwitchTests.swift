@@ -19,15 +19,7 @@ struct RunnerPrepareTests {
         licensed: false, detail: CrossOverLicense.notActivated, diagnostic: "test"
     )
 
-    private static let wine = RunnerBuild(
-        bundleVersion: "11.15",
-        releaseVersion: "11.15",
-        flavor: "wine",
-        loaderSHA256: String(repeating: "b", count: 64),
-        cleanNtdll: [.x86_64Windows: String(repeating: "1", count: 64)],
-        patchedNtdll: [.x86_64Windows: String(repeating: "2", count: 64)],
-        origin: .downloadedWine(DownloadedWineBuildTests.download)
-    )
+    private static let wine = fixtureWine
 
     private static let runScript = Data("#!/bin/sh\n".utf8)
 
