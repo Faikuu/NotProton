@@ -9,6 +9,16 @@ struct CrossOverRowTests {
     private static let preview = SupportedRunners.all.first { $0.flavor == "fex" }!
     private static let release = SupportedRunners.all.first { $0.id == "26.3.0.39832" }!
 
+    private static let wine = RunnerBuild(
+        bundleVersion: "11.15",
+        releaseVersion: "11.15",
+        flavor: "wine",
+        loaderSHA256: String(repeating: "b", count: 64),
+        cleanNtdll: [.x86_64Windows: String(repeating: "1", count: 64)],
+        patchedNtdll: [.x86_64Windows: String(repeating: "2", count: 64)],
+        origin: .downloadedWine(DownloadedWineBuildTests.download)
+    )
+
     private func install(_ name: String, _ build: RunnerBuild, root: String = "/Applications") -> CrossOverInstall {
         CrossOverInstall(bundle: URL(filePath: "\(root)/\(name).app"), releaseVersion: "x", support: .supported(build))
     }
@@ -19,7 +29,8 @@ struct CrossOverRowTests {
         damaged: [String] = [],
         orphaned: [String] = [],
         unpatched: [String] = [],
-        unlicensed: Set<String> = []
+        unlicensed: Set<String> = [],
+        downloadable: [RunnerBuild] = []
     ) -> [CrossOverRow] {
         var licenses: [String: CrossOverLicense.Status] = [:]
         for install in installs {
@@ -29,8 +40,38 @@ struct CrossOverRowTests {
         }
         return CrossOverRow.rows(
             installs: installs, licenses: licenses, installed: installed,
-            damaged: damaged, orphaned: orphaned, unpatched: unpatched
+            damaged: damaged, orphaned: orphaned, unpatched: unpatched,
+            downloadable: downloadable
         )
+    }
+
+    @Test("A downloadable build with no copy gets a row that can be downloaded")
+    func downloadableRow() {
+        let release = install("CrossOver", Self.release)
+
+        let made = rows([release], installed: [Self.release], downloadable: [Self.wine])
+
+        #expect(made.map(\.buildID) == [Self.release.id, "11.15-wine"])
+        let row = made[1]
+        #expect(row.copy == .none)
+        #expect(row.isDownloadable)
+        #expect(row.install == nil)
+        #expect(!row.canSetUp)
+        #expect(row.title == "Wine 11.15 (free)")
+        #expect(!made[0].isDownloadable)
+
+        // Without the argument the rows are what they always were.
+        #expect(rows([release], installed: [Self.release]).map(\.buildID) == [Self.release.id])
+    }
+
+    @Test("An installed wine copy does not get a second row")
+    func noDuplicateRow() {
+        let made = rows([], installed: [Self.wine], downloadable: [Self.wine])
+
+        #expect(made.count == 1)
+        #expect(made[0].buildID == "11.15-wine")
+        #expect(made[0].copy == .ready)
+        #expect(!made[0].isDownloadable)
     }
 
     @Test("Each app gets its own row, tied to its own build")

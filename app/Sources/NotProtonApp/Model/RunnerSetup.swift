@@ -41,6 +41,18 @@ enum RunnerSetup {
         return try prepare(build, report: report)
     }
 
+    // A downloaded Wine is already in place once fetched, so there is no clone to make.
+    static func run(
+        downloading build: RunnerBuild,
+        replacingExisting: Bool = false,
+        report: @Sendable (String) -> Void = { _ in }
+    ) async throws -> Outcome {
+        let installed = try await WineFetcher.run(
+            build, replacingExisting: replacingExisting, report: { report($0.label) }
+        )
+        return try prepare(installed, report: { report($0.label) })
+    }
+
     static let prepareStep = String(localized: "Set up compatibility tool")
 
     static func prepare(
@@ -67,9 +79,11 @@ enum RunnerSetup {
         }
 
         let root = SupportPaths.clonedRoot(forBuild: build.id, runners: runners)
-        let status = license(root)
-        guard status.licensed else {
-            throw StepFailure(step: String(localized: "Verify CrossOver license"), detail: status.detail)
+        if case .crossOver = build.origin {
+            let status = license(root)
+            guard status.licensed else {
+                throw StepFailure(step: String(localized: "Verify CrossOver license"), detail: status.detail)
+            }
         }
 
         try verify(build, root)

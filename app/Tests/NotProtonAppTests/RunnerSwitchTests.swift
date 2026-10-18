@@ -19,11 +19,22 @@ struct RunnerPrepareTests {
         licensed: false, detail: CrossOverLicense.notActivated, diagnostic: "test"
     )
 
+    private static let wine = RunnerBuild(
+        bundleVersion: "11.15",
+        releaseVersion: "11.15",
+        flavor: "wine",
+        loaderSHA256: String(repeating: "b", count: 64),
+        cleanNtdll: [.x86_64Windows: String(repeating: "1", count: 64)],
+        patchedNtdll: [.x86_64Windows: String(repeating: "2", count: 64)],
+        origin: .downloadedWine(DownloadedWineBuildTests.download)
+    )
+
     private static let runScript = Data("#!/bin/sh\n".utf8)
 
     private final class Calls: @unchecked Sendable {
         var staged: [String] = []
         var patched: [String] = []
+        var licenseChecks = 0
     }
 
     private func makeRunners(cloning builds: [RunnerBuild]) throws -> URL {
@@ -75,7 +86,7 @@ struct RunnerPrepareTests {
                 try Self.runScript.write(to: script)
                 return script
             },
-            license: { _ in license },
+            license: { _ in calls.licenseChecks += 1; return license },
             verify: { _, _ in },
             stage: { build, _, bridge in
                 calls.staged.append(build.id)
@@ -92,6 +103,34 @@ struct RunnerPrepareTests {
 
     private func toolList(_ runners: URL) -> String? {
         try? String(contentsOf: runners.appending(path: "tools"), encoding: .utf8)
+    }
+
+    @Test("prepare never calls the license check for a downloaded Wine")
+    func wineSkipsLicense() throws {
+        let runners = try makeRunners(cloning: [Self.wine])
+        defer { try? FileManager.default.removeItem(at: runners) }
+
+        let calls = Calls()
+        let outcome = try prepare(Self.wine, runners: runners, calls: calls, license: Self.unlicensed)
+
+        #expect(calls.licenseChecks == 0)
+        #expect(calls.staged == [Self.wine.id])
+        #expect(calls.patched == [Self.wine.id])
+        #expect(outcome.build == Self.wine)
+    }
+
+    @Test("prepare still enforces the license for CrossOver")
+    func crossOverStillLicensed() throws {
+        let runners = try makeRunners(cloning: [Self.release])
+        defer { try? FileManager.default.removeItem(at: runners) }
+
+        let calls = Calls()
+        #expect(throws: StepFailure.self) {
+            try prepare(Self.release, runners: runners, calls: calls, license: Self.unlicensed)
+        }
+        #expect(calls.licenseChecks == 1)
+        #expect(calls.staged.isEmpty)
+        #expect(calls.patched.isEmpty)
     }
 
     @Test("Every set-up build is listed as its own tools")
