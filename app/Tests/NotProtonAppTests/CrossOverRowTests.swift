@@ -85,6 +85,18 @@ struct CrossOverRowTests {
         }
     }
 
+    @Test("CrossOver is reported missing only when nothing but Wine rows are shown")
+    func notFoundRow() {
+        let release = install("CrossOver", Self.release)
+
+        #expect(StatusView.notFoundTone(rows([])) == .bad)
+        #expect(StatusView.notFoundTone(rows([], downloadable: [Self.wine])) == .neutral)
+        #expect(StatusView.notFoundTone(rows([], installed: [Self.wine], downloadable: [Self.wine])) == .neutral)
+        #expect(StatusView.notFoundTone(rows([release], downloadable: [Self.wine])) == nil)
+        // A CrossOver copy whose app is gone already says so on its own row.
+        #expect(StatusView.notFoundTone(rows([], installed: [Self.release], downloadable: [Self.wine])) == nil)
+    }
+
     @Test("Each app gets its own row, tied to its own build")
     func oneRowPerApp() {
         let preview = install("CrossOver Preview", Self.preview)

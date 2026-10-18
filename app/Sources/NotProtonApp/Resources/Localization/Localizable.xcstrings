@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    " If the download fails, NotProton stays installed and Wine can be downloaded again from this pane." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " If the download fails, NotProton stays installed and Wine can be downloaded again from this pane."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " If the download fails, NotProton stays installed and Wine can be downloaded again from this pane."
+          }
+        }
+      }
+    },
     " NotProton can be deployed, but the CrossOver compatibility tool cannot be installed without a valid license." : {
       "localizations" : {
         "it" : {
@@ -349,6 +365,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 不是 Windows 程序。请选择 exe、msi、bat 或 cmd 文件。"
+          }
+        }
+      }
+    },
+    "%@ is not a download." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ is not a download."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ is not a download."
           }
         }
       }
@@ -2607,6 +2639,118 @@
         }
       }
     },
+    "Download" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download"
+          }
+        }
+      }
+    },
+    "Download %@ again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download %@ again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download %@ again."
+          }
+        }
+      }
+    },
+    "Download %@ and set up its compatibility tool." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download %@ and set up its compatibility tool."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download %@ and set up its compatibility tool."
+          }
+        }
+      }
+    },
+    "Download & Set Up" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download & Set Up"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download & Set Up"
+          }
+        }
+      }
+    },
+    "Download Wine" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download Wine"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download Wine"
+          }
+        }
+      }
+    },
+    "Download Wine and Install" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download Wine and Install"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download Wine and Install"
+          }
+        }
+      }
+    },
+    "Download Wine?" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download Wine?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Download Wine?"
+          }
+        }
+      }
+    },
     "Download missing Valve binaries." : {
       "localizations" : {
         "it" : {
@@ -2635,6 +2779,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已下载缺失的组件。"
+          }
+        }
+      }
+    },
+    "Downloading Wine" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloading Wine"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloading Wine"
           }
         }
       }
@@ -2799,6 +2959,22 @@
         }
       }
     },
+    "Free and open source, no CrossOver needed." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Free and open source, no CrossOver needed."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Free and open source, no CrossOver needed."
+          }
+        }
+      }
+    },
     "Game" : {
       "localizations" : {
         "it" : {
@@ -2875,6 +3051,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将 NotProton 安装到 Steam。"
+          }
+        }
+      }
+    },
+    "Install Without Wine" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Install Without Wine"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Install Without Wine"
+          }
+        }
+      }
+    },
+    "Install without CrossOver?" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Install without CrossOver?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Install without CrossOver?"
           }
         }
       }
@@ -3391,6 +3599,22 @@
         }
       }
     },
+    "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. " : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. "
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. "
+          }
+        }
+      }
+    },
     "No Prefixes" : {
       "localizations" : {
         "it" : {
@@ -3403,6 +3627,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂无游戏容器"
+          }
+        }
+      }
+    },
+    "No Wine build is available to download." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No Wine build is available to download."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No Wine build is available to download."
           }
         }
       }
@@ -3503,6 +3743,22 @@
         }
       }
     },
+    "Not enough free disk space. Setting up %@ needs %@." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not enough free disk space. Setting up %@ needs %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not enough free disk space. Setting up %@ needs %@."
+          }
+        }
+      }
+    },
     "Not found. Supported: %@." : {
       "localizations" : {
         "it" : {
@@ -3515,6 +3771,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未找到。支持的版本：%@。"
+          }
+        }
+      }
+    },
+    "Not found. Supported: %@. The free Wine below works without it." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not found. Supported: %@. The free Wine below works without it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not found. Supported: %@. The free Wine below works without it."
           }
         }
       }
@@ -6261,6 +6533,22 @@
         }
       }
     },
+    "Unpacking %@ failed. %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unpacking %@ failed. %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unpacking %@ failed. %@"
+          }
+        }
+      }
+    },
     "Update" : {
       "localizations" : {
         "it" : {
@@ -6449,6 +6737,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wine 日志"
+          }
+        }
+      }
+    },
+    "Wine can be downloaded again later." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wine can be downloaded again later."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wine can be downloaded again later."
+          }
+        }
+      }
+    },
+    "Wine is downloaded from Gcenx's macOS Wine builds on GitHub, about %@. It is free software under the LGPL. It runs games through Rosetta only, without D3DMetal or DXMT, and its media codecs need GStreamer, which NotProton does not install." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wine is downloaded from Gcenx's macOS Wine builds on GitHub, about %@. It is free software under the LGPL. It runs games through Rosetta only, without D3DMetal or DXMT, and its media codecs need GStreamer, which NotProton does not install."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wine is downloaded from Gcenx's macOS Wine builds on GitHub, about %@. It is free software under the LGPL. It runs games through Rosetta only, without D3DMetal or DXMT, and its media codecs need GStreamer, which NotProton does not install."
           }
         }
       }

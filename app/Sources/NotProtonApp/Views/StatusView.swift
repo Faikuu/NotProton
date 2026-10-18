@@ -220,7 +220,11 @@ struct StatusView: View {
             }
             Button("Cancel", role: .cancel) { status.cancelBuildRemoval() }
         } message: {
-            Text("CrossOver itself is not removed.")
+            if let build = status.pendingRemoval, SupportedRunners.build(id: build)?.isDownloadedWine == true {
+                Text("Wine can be downloaded again later.")
+            } else {
+                Text("CrossOver itself is not removed.")
+            }
         }
         .confirmationDialog(
             String(localized: "Remove everything NotProton has created?"),
@@ -249,6 +253,36 @@ struct StatusView: View {
                     + String(localized: " NotProton can be deployed, but the CrossOver compatibility tool cannot be installed without a valid license.")
             )
         }
+        .confirmationDialog(
+            String(localized: "Download Wine?"),
+            isPresented: asking(.downloadWine),
+            titleVisibility: .visible
+        ) {
+            let replacing = status.pendingWineReplacement
+            Button("Download") { startWineDownload(replacing: replacing) }
+            Button("Cancel", role: .cancel) { status.cancelWineDownload() }
+        } message: {
+            Text(Self.wineAbout)
+        }
+        .confirmationDialog(
+            String(localized: "Install without CrossOver?"),
+            isPresented: asking(.installWithWine),
+            titleVisibility: .visible
+        ) {
+            Button("Download Wine and Install") {
+                Task { await status.installIntoSteam(downloadingWine: true) }
+            }
+            Button("Install Without Wine") {
+                Task { await status.installIntoSteam() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                String(localized: "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. ")
+                    + Self.wineAbout
+                    + String(localized: " If the download fails, NotProton stays installed and Wine can be downloaded again from this pane.")
+            )
+        }
         .task { if status.snapshot == nil { await status.refresh() } }
         .confirmationDialog(
             CrossOverLicense.notActivatedTitle,
@@ -267,9 +301,24 @@ struct StatusView: View {
             set: { shown in
                 if !shown, status.pendingConfirmation == confirmation {
                     status.pendingConfirmation = nil
+                    if confirmation == .downloadWine { status.cancelWineDownload() }
                 }
             }
         )
+    }
+
+    // Dismissing the dialog clears the replace flag, and SwiftUI may do that before or
+    // after this runs, so it is set again here. Clearing pendingConfirmation first keeps
+    // a later dismissal from clearing it.
+    private func startWineDownload(replacing: Bool) {
+        status.requestWineDownload(replacingExisting: replacing)
+        status.pendingConfirmation = nil
+        Task { await status.downloadWine() }
+    }
+
+    private static var wineAbout: String {
+        let size = SupportedRunners.downloadable.first?.download?.approximateBytes ?? 190_000_000
+        return String(localized: "Wine is downloaded from Gcenx's macOS Wine builds on GitHub, about \(size.formatted(.byteCount(style: .file))). It is free software under the LGPL. It runs games through Rosetta only, without D3DMetal or DXMT, and its media codecs need GStreamer, which NotProton does not install.")
     }
 
     private func statusForm(_ snapshot: StatusSnapshot) -> some View {
@@ -528,11 +577,13 @@ struct StatusView: View {
     @ViewBuilder
     private func crossOverSection(_ snapshot: StatusSnapshot) -> some View {
         let rows = status.crossOverRows
-        if rows.isEmpty {
+        if let tone = Self.notFoundTone(rows) {
             StatusRow(
                 title: "CrossOver",
-                value: String(localized: "Not found. Supported: \(SupportedRunners.versionList)."),
-                tone: .bad
+                value: tone == .bad
+                    ? String(localized: "Not found. Supported: \(Self.crossOverVersions).")
+                    : String(localized: "Not found. Supported: \(Self.crossOverVersions). The free Wine below works without it."),
+                tone: tone
             )
         }
         let tools = SupportedRunners.tools(for: snapshot.installedRunners)
@@ -570,9 +621,24 @@ struct StatusView: View {
         }
     }
 
+    // Shown only while no CrossOver app is found and nothing but Wine rows stand in for
+    // one. It is not an error when the free Wine is there to use instead.
+    nonisolated static func notFoundTone(_ rows: [CrossOverRow]) -> StatusTone? {
+        guard rows.allSatisfy(\.isDownloadable) else { return nil }
+        return rows.isEmpty ? .bad : .neutral
+    }
+
+    // The downloaded Wine is pinned in SupportedRunners too, but it is not a CrossOver version.
+    private static var crossOverVersions: String {
+        var seen = Set<String>()
+        return SupportedRunners.all.filter { !$0.isDownloadedWine }.map(\.releaseVersion)
+            .filter { seen.insert($0).inserted }
+            .joined(separator: ", ")
+    }
+
     private func crossOverValue(_ row: CrossOverRow) -> String {
         if let version = row.unsupportedVersion {
-            return String(localized: "Version \(version) not supported (supported: \(SupportedRunners.versionList))")
+            return String(localized: "Version \(version) not supported (supported: \(Self.crossOverVersions))")
         }
         let build = String(localized: "Build \(SupportedRunners.displayVersion(forID: row.buildID))")
         switch row.copy {
@@ -600,7 +666,9 @@ struct StatusView: View {
             lines.append(contentsOf: names)
         }
         if row.copy == .none, row.licensed == false { lines.append("\(String(localized: "Open CrossOver to activate it.")) \(CrossOverLicense.trialUnsupported)") }
-        if let install = row.install {
+        if row.isDownloadable {
+            if row.copy == .none { lines.append(String(localized: "Free and open source, no CrossOver needed.")) }
+        } else if let install = row.install {
             var path = install.bundle.path(percentEncoded: false)
             if path.count > 1, path.hasSuffix("/") { path.removeLast() }
             lines.append(path)
@@ -613,6 +681,20 @@ struct StatusView: View {
     private func crossOverAction(_ row: CrossOverRow, prominent: Bool) -> StatusAction? {
         let install = row.install
         switch row.copy {
+        case .none where row.isDownloadable:
+            return StatusAction(
+                label: String(localized: "Download & Set Up"),
+                isProminent: prominent,
+                help: String(localized: "Download \(row.title) and set up its compatibility tool."),
+                isEnabled: status.canInstall
+            ) { status.requestWineDownload() }
+        case .unpatched where row.isDownloadable, .damaged where row.isDownloadable:
+            return StatusAction(
+                label: String(localized: "Repair"),
+                isProminent: true,
+                help: String(localized: "Download \(row.title) again."),
+                isEnabled: status.canInstall
+            ) { status.requestWineDownload(replacingExisting: true) }
         case .none where row.canSetUp:
             return StatusAction(
                 label: String(localized: "Set Up"),
@@ -637,7 +719,13 @@ struct StatusView: View {
     private func crossOverMenu(_ row: CrossOverRow) -> [StatusAction] {
         var items: [StatusAction] = []
         let install = row.install
-        if row.copy == .ready {
+        if row.copy == .ready, row.isDownloadable {
+            items.append(StatusAction(
+                label: String(localized: "Reinstall"),
+                help: String(localized: "Download \(row.title) again."),
+                isEnabled: status.canInstall
+            ) { status.requestWineDownload(replacingExisting: true) })
+        } else if row.copy == .ready {
             items.append(StatusAction(
                 label: String(localized: "Reinstall"),
                 help: String(localized: "Copy \(row.title) again."),
