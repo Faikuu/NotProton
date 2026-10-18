@@ -1157,6 +1157,42 @@ install_lsteamclient_trigger() {
   fi
 }
 
+# Free Wine's own Direct3D 11 cannot create a device here, so a stock Wine gets DXVK instead. The
+# copies are inert without the override that install_dxvk sets, so a leftover copy is harmless.
+install_dxvk() {
+  np_dxvk_overrides=""
+  [ -n "$np_stock_wine" ] || return 0
+  dxvk_root="$np_support/dxvk/dxvk-macOS-async-v1.10.3-20230507-repack"
+  if [ ! -f "$dxvk_root/x64/d3d11.dll" ]; then
+    show_alert "DirectX 11 layer is missing" "NotProton could not find DXVK for this game. Open NotProton's Status pane and repair the Wine row."
+    return 0
+  fi
+  dxvk_failed=0
+  for f in d3d11.dll d3d10core.dll; do
+    dxvk_place "$dxvk_root/x64/$f" "$WINEPREFIX/drive_c/windows/system32/$f" || dxvk_failed=1
+  done
+  if [ -d "$WINEPREFIX/drive_c/windows/syswow64" ]; then
+    for f in d3d11.dll d3d10core.dll; do
+      dxvk_place "$dxvk_root/x32/$f" "$WINEPREFIX/drive_c/windows/syswow64/$f" || dxvk_failed=1
+    done
+  fi
+  [ "$dxvk_failed" -eq 0 ] || return 1
+  np_dxvk_overrides="d3d11,d3d10core=n,b;"
+}
+
+# Copies a layer file over a prefix file unless they already match. The copy goes to a temporary
+# name first, so a failed copy never leaves a truncated DLL where Wine would load it.
+dxvk_place() {
+  cmp -s "$1" "$2" && return 0
+  if cp -f "$1" "$2.notproton-tmp" 2>> "$log" && mv -f "$2.notproton-tmp" "$2" 2>> "$log"; then
+    echo "=== installed DXVK $(basename "$2") ===" >> "$log" 2>&1 || true
+    return 0
+  fi
+  rm -f "$2.notproton-tmp"
+  echo "=== could not copy $1 to $2 ===" >> "$log" 2>&1 || true
+  return 1
+}
+
 # A fix to match Proton
 install_legacy_steam_dll() {
   src="$bridge_src/legacycompat/Steam.dll"
@@ -1285,10 +1321,14 @@ if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
     show_alert "Steam files could not be copied" "NotProton could not copy a file into this game's prefix. Open this prefix's notproton-run.log for details."
     exit 1
   fi
+  if ! install_dxvk; then
+    show_alert "DirectX 11 layer could not be copied" "NotProton could not copy DXVK into this game's prefix. Open this prefix's notproton-run.log for details."
+    exit 1
+  fi
   install_legacy_steam_dll
   export WINEDLLPATH="$prefix_steam:$WINEDLLPATH"
   # If the same DLL appears twice in WINEDLLOVERRIDES, the last entry wins.
-  vc_overrides=$(native_vc_runtime)
+  vc_overrides="$np_dxvk_overrides$(native_vc_runtime)"
   export WINEDLLOVERRIDES="${vc_overrides}${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}steamclient=n;steamclient64=n;lsteamclient=b"
   native_client="$STEAM_COMPAT_CLIENT_INSTALL_PATH"
   if [ -z "$native_client" ]; then

@@ -155,6 +155,71 @@ is "a CrossOver runner keeps the user and adds nothing" \
   "process=macuser template=macuser forwarded=" "$(probe "$user_work/cx")"
 rm -rf "$user_work"
 
+echo "== DirectX 11 layer (DXVK, stock Wine only) =="
+dxvk_fn=$(sed -n '/^install_dxvk() {/,/^}/p' "$SRC")
+dxvk_place_fn=$(sed -n '/^dxvk_place() {/,/^}/p' "$SRC")
+[ -n "$dxvk_fn" ] && [ -n "$dxvk_place_fn" ] ||
+  { echo "FAIL: install_dxvk and dxvk_place were not found"; exit 1; }
+dxvk_work=$(mktemp -d)
+dxvk_layer="$dxvk_work/support/dxvk/dxvk-macOS-async-v1.10.3-20230507-repack"
+for f in x64/d3d11.dll x64/d3d10core.dll x32/d3d11.dll x32/d3d10core.dll; do
+  mkdir -p "$dxvk_layer/${f%/*}"
+  printf 'layer %s' "$f" > "$dxvk_layer/$f"
+done
+# Runs install_dxvk against one prefix. Prints the return code, the override it set, and the
+# number of alerts it showed. support is the directory holding dxvk/, stock is np_stock_wine.
+dxvk_probe() (
+  np_support="$1"; WINEPREFIX="$2"; np_stock_wine="$3"; log=/dev/null
+  alerts=0
+  # shellcheck disable=SC2329 # called by install_dxvk, which is eval'd below
+  show_alert() { alerts=$((alerts + 1)); }
+  eval "$dxvk_place_fn"
+  eval "$dxvk_fn"
+  rc=0; install_dxvk || rc=$?
+  printf 'rc=%s overrides=%s alerts=%s' "$rc" "$np_dxvk_overrides" "$alerts"
+)
+same() { cmp -s "$1" "$2" && printf same || printf different; }
+
+pfx="$dxvk_work/stock"
+mkdir -p "$pfx/drive_c/windows/system32" "$pfx/drive_c/windows/syswow64"
+is "a stock prefix gets the override and no alert" \
+  "rc=0 overrides=d3d11,d3d10core=n,b; alerts=0" "$(dxvk_probe "$dxvk_work/support" "$pfx" 1)"
+is "the x64 DLLs match the layer" "same same" \
+  "$(same "$dxvk_layer/x64/d3d11.dll" "$pfx/drive_c/windows/system32/d3d11.dll") $(same "$dxvk_layer/x64/d3d10core.dll" "$pfx/drive_c/windows/system32/d3d10core.dll")"
+is "the x32 DLLs match the layer" "same same" \
+  "$(same "$dxvk_layer/x32/d3d11.dll" "$pfx/drive_c/windows/syswow64/d3d11.dll") $(same "$dxvk_layer/x32/d3d10core.dll" "$pfx/drive_c/windows/syswow64/d3d10core.dll")"
+
+cx="$dxvk_work/crossover"
+mkdir -p "$cx/drive_c/windows/system32"
+is "a CrossOver run is untouched" "rc=0 overrides= alerts=0" "$(dxvk_probe "$dxvk_work/support" "$cx" "")"
+is "a CrossOver run copies nothing" "absent" \
+  "$([ -e "$cx/drive_c/windows/system32/d3d11.dll" ] && printf present || printf absent)"
+
+is "a missing layer alerts once and continues" "rc=0 overrides= alerts=1" \
+  "$(dxvk_probe "$dxvk_work/none" "$pfx" 1)"
+
+nosw="$dxvk_work/no-syswow64"
+mkdir -p "$nosw/drive_c/windows/system32"
+is "no syswow64 skips the x32 files but keeps the override" "rc=0 overrides=d3d11,d3d10core=n,b; alerts=0" \
+  "$(dxvk_probe "$dxvk_work/support" "$nosw" 1)"
+is "no syswow64 is not created" "absent" \
+  "$([ -e "$nosw/drive_c/windows/syswow64" ] && printf present || printf absent)"
+
+ino1=$(stat -f %i "$pfx/drive_c/windows/system32/d3d11.dll")
+is "a second run leaves matching files alone" "rc=0 overrides=d3d11,d3d10core=n,b; alerts=0" \
+  "$(dxvk_probe "$dxvk_work/support" "$pfx" 1)"
+is "the matching file keeps its inode" "$ino1" "$(stat -f %i "$pfx/drive_c/windows/system32/d3d11.dll")"
+
+ro="$dxvk_work/read-only"
+mkdir -p "$ro/drive_c/windows/system32"
+chmod 555 "$ro/drive_c/windows/system32"
+is "an unwritable prefix fails and leaves no temporary file" "rc=1 overrides= alerts=0" \
+  "$(dxvk_probe "$dxvk_work/support" "$ro" 1)"
+is "no truncated DLL or temporary file is left" "absent absent" \
+  "$([ -e "$ro/drive_c/windows/system32/d3d11.dll" ] && printf present || printf absent) $([ -e "$ro/drive_c/windows/system32/d3d11.dll.notproton-tmp" ] && printf present || printf absent)"
+chmod 755 "$ro/drive_c/windows/system32"
+rm -rf "$dxvk_work"
+
 if [ "$fails" -eq 0 ]; then
 	echo "==> envcheck: all assertions hold"
 else
