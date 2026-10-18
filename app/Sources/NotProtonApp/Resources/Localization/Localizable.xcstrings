@@ -1,18 +1,18 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    " If the download fails, the installation will be incomplete. Run Install again, or download Wine from this pane afterwards." : {
+    " If Wine cannot be set up, NotProton is still installed, and Wine can be set up again from this pane." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : " If the download fails, the installation will be incomplete. Run Install again, or download Wine from this pane afterwards."
+            "value" : " If Wine cannot be set up, NotProton is still installed, and Wine can be set up again from this pane."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : " If the download fails, the installation will be incomplete. Run Install again, or download Wine from this pane afterwards."
+            "value" : " If Wine cannot be set up, NotProton is still installed, and Wine can be set up again from this pane."
           }
         }
       }
@@ -3599,22 +3599,6 @@
         }
       }
     },
-    "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. " : {
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. "
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. "
-          }
-        }
-      }
-    },
     "No Prefixes" : {
       "localizations" : {
         "it" : {
@@ -3707,6 +3691,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已卸载"
+          }
+        }
+      }
+    },
+    "No supported CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. " : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No supported CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. "
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No supported CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. "
           }
         }
       }
@@ -6753,6 +6753,22 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Wine can be downloaded again later."
+          }
+        }
+      }
+    },
+    "Wine could not be set up: %@. Run Install again, or download Wine from the Status pane." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wine could not be set up: %@. Run Install again, or download Wine from the Status pane."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wine could not be set up: %@. Run Install again, or download Wine from the Status pane."
           }
         }
       }

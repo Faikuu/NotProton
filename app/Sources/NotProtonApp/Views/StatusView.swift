@@ -278,9 +278,9 @@ struct StatusView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                String(localized: "No CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. ")
+                String(localized: "No supported CrossOver was found, so Steam has nothing to run Windows games with. NotProton can install into Steam first and then download the free Wine. ")
                     + Self.wineAbout
-                    + String(localized: " If the download fails, the installation will be incomplete. Run Install again, or download Wine from this pane afterwards.")
+                    + String(localized: " If Wine cannot be set up, NotProton is still installed, and Wine can be set up again from this pane.")
             )
         }
         .task { if status.snapshot == nil { await status.refresh() } }

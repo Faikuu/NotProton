@@ -201,11 +201,20 @@ final class SystemStatus {
         !hasUsableCrossOver && runner == RunnerState.none
     }
 
+    // No pinned Wine build means there is nothing to offer yet.
+    nonisolated static func wineOffered(
+        hasUsableCrossOver: Bool, runner: RunnerState, downloadable: [RunnerBuild]
+    ) -> Bool {
+        wineOffer(hasUsableCrossOver: hasUsableCrossOver, runner: runner) && !downloadable.isEmpty
+    }
+
     func requestInstall() async {
         guard canInstall else { return }
-        // No pinned Wine build means there is nothing to offer yet.
-        if Self.wineOffer(hasUsableCrossOver: usableCrossOver != nil, runner: snapshot?.runner ?? RunnerState.none),
-           !SupportedRunners.downloadable.isEmpty {
+        if Self.wineOffered(
+            hasUsableCrossOver: usableCrossOver != nil,
+            runner: snapshot?.runner ?? RunnerState.none,
+            downloadable: SupportedRunners.downloadable
+        ) {
             pendingConfirmation = .installWithWine
             return
         }
@@ -496,6 +505,20 @@ final class SystemStatus {
         }
     }
 
+    // Wine comes on top of the install, so its failure is reported beside the success
+    // instead of skipping the Valve fetch and the record of what was deployed.
+    static func settingUpWine(_ setUp: () async throws -> Void) async -> String? {
+        do {
+            try await setUp()
+            return nil
+        } catch {
+            AppLog.note("wine setup failed during install: \(error.localizedDescription)")
+            let reason = ((error as? StepFailure)?.detail ?? error.localizedDescription)
+                .trimmingCharacters(in: CharacterSet(charactersIn: ". \n"))
+            return String(localized: "Wine could not be set up: \(reason). Run Install again, or download Wine from the Status pane.")
+        }
+    }
+
     private static let restartHint = String(localized: "Steam was stopped, so start it again.")
 
     private static let toolNotActivated =
@@ -551,7 +574,11 @@ final class SystemStatus {
                 }.value
             } else if downloadingWine, state.runner == .none, let wine = SupportedRunners.downloadable.first {
                 progress(String(localized: "Downloading Wine"))
-                _ = try await downloadAndSetUp(wine, replacingExisting: false, progress: progress)
+                if let note = await Self.settingUpWine({
+                    _ = try await self.downloadAndSetUp(wine, replacingExisting: false, progress: progress)
+                }) {
+                    parts.append(note)
+                }
             } else if install != nil, state.license?.licensed == false, state.runner == .none {
                 // Not a failure, NotProton was installed but without a compatibility tool
                 parts.append(Self.toolNotActivated)

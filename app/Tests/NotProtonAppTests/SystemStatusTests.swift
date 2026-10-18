@@ -475,6 +475,37 @@ struct WineDownloadTests {
         #expect(!SystemStatus.wineOffer(hasUsableCrossOver: false, runner: .unpatched(builds: ["11.15-wine"], problems: ["x"])))
     }
 
+    @Test("The install offers Wine only when a Wine build is pinned as well")
+    func wineOfferedTruthTable() {
+        let pinned = [fixtureWine]
+        #expect(SystemStatus.wineOffered(hasUsableCrossOver: false, runner: .none, downloadable: pinned))
+        #expect(!SystemStatus.wineOffered(hasUsableCrossOver: false, runner: .none, downloadable: []))
+        #expect(!SystemStatus.wineOffered(hasUsableCrossOver: true, runner: .none, downloadable: pinned))
+        #expect(!SystemStatus.wineOffered(
+            hasUsableCrossOver: false, runner: .ready(builds: ["11.15-wine"]), downloadable: pinned))
+        #expect(!SystemStatus.wineOffered(
+            hasUsableCrossOver: false, runner: .unpatched(builds: ["11.15-wine"], problems: ["x"]), downloadable: pinned))
+    }
+
+    // The install goes on to the Valve fetch and its record after this, so a Wine failure
+    // has to come back as a note and not as a throw.
+    @Test("A Wine failure during install becomes a note instead of a throw")
+    func wineFailureIsANote() async {
+        let note = await SystemStatus.settingUpWine {
+            throw StepFailure(step: RunnerPatcher.step, detail: "x86_64-unix/wine carries no entitlements to extend.")
+        }
+        #expect(note == "Wine could not be set up: x86_64-unix/wine carries no entitlements to extend. Run Install again, or download Wine from the Status pane.")
+
+        struct Offline: LocalizedError { var errorDescription: String? { "The network is offline" } }
+        let offline = await SystemStatus.settingUpWine { throw Offline() }
+        #expect(offline == "Wine could not be set up: The network is offline. Run Install again, or download Wine from the Status pane.")
+
+        var ran = false
+        let none = await SystemStatus.settingUpWine { ran = true }
+        #expect(ran)
+        #expect(none == nil)
+    }
+
     @Test("requestWineDownload asks first and downloads nothing")
     func requestAsks() {
         let status = SystemStatus()
