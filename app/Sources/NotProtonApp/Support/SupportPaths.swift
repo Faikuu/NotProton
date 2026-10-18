@@ -42,6 +42,10 @@ enum SupportPaths {
         home.appending(path: "Library/Caches/\(supportDirName)/winetricks")
     }
 
+    static var wineDownloads: URL {
+        home.appending(path: "Library/Caches/\(supportDirName)/wine")
+    }
+
     static var deployedVersion: URL { support.appending(path: "dylib.version") }
 
     // Read by the dylib at Steam launch, in np_compat_load_tool_list.

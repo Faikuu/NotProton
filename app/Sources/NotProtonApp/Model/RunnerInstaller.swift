@@ -23,7 +23,6 @@ enum RunnerInstaller {
         let target = SupportPaths.runnerRoot(forBuild: build.id, runners: runners)
 
         let existing = hasClone(forBuild: build.id, runners: runners)
-        let occupied = fm.fileExists(atPath: target.path(percentEncoded: false))
 
         if !existing || replacingExisting {
             let staging = target.deletingLastPathComponent()
@@ -32,10 +31,7 @@ enum RunnerInstaller {
             defer { try? fm.removeItem(at: staging) }
             try copyPayload(from: install.crossOverRoot, to: staging)
             try verifyClone(build: build, root: staging.appending(path: "CrossOver"))
-            if occupied {
-                try fm.removeItem(at: target)
-            }
-            try fm.moveItem(at: staging, to: target)
+            try swapIn(staging: staging, target: target)
             return build
         }
 
@@ -43,6 +39,16 @@ enum RunnerInstaller {
         try verifyClone(build: build, root: cloned)
 
         return build
+    }
+
+    // Only called once the staged copy has been verified, so a failed install never
+    // costs the clone that is already there.
+    static func swapIn(staging: URL, target: URL) throws {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: target.path(percentEncoded: false)) {
+            try fm.removeItem(at: target)
+        }
+        try fm.moveItem(at: staging, to: target)
     }
 
     static let removeStep = String(localized: "Remove build")
