@@ -192,6 +192,13 @@ without_lock_fds() {
 # If two WINEDLLPATH directories have the same DLL, Wine uses the one listed first.
 export WINEDLLPATH="$CX_ROOT/lib/wine/x86_64-windows:$wine_unix${WINEDLLPATH:+:$WINEDLLPATH}"
 export PATH="$CX_ROOT/bin:$PATH"
+# CrossOver's Wine names the user "crossover", which the layout below aliases to steamuser.
+# A stock Wine uses the macOS user name, so name it steamuser, as Proton does.
+np_stock_wine=""
+if [ -d "$CX_ROOT/lib/wine" ] && [ ! -e "$CX_ROOT/bin/cxbottle" ]; then
+  np_stock_wine=1
+  export WINEUSERNAME=steamuser
+fi
 
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   log="$STEAM_COMPAT_DATA_PATH/notproton-run.log"
@@ -668,7 +675,8 @@ in_template_env() {
     LANG="${LANG:-}" LC_ALL="${LC_ALL:-}" \
     PATH="$CX_ROOT/bin:/usr/bin:/bin:/usr/sbin:/sbin" CX_ROOT="$CX_ROOT" CX_HOME="$CX_HOME" \
     WINEDLLPATH="$CX_ROOT/lib/wine/x86_64-windows:$wine_unix" \
-    WINELOADER="$WINELOADER" WINESERVER="$WINESERVER" WINEPREFIX="$prefix" "$@"
+    WINELOADER="$WINELOADER" WINESERVER="$WINESERVER" WINEPREFIX="$prefix" \
+    ${np_stock_wine:+WINEUSERNAME=steamuser} "$@"
 }
 
 seed_scratch=""
@@ -1528,6 +1536,7 @@ for name in $(env | LC_ALL=C sed -nE 's/^(CX_APPLEGPTK_LIBD3DSHARED_PATH|Steam[A
   # shellcheck disable=SC2154 # eval assigns value on the line above
   set -- --env "$name=$value" "$@"
 done
+[ -z "$np_stock_wine" ] || set -- --env WINEUSERNAME=steamuser "$@"
 set -- \
   --env CX_ROOT="$CX_ROOT" \
   --env CX_HOME="$CX_HOME" \
