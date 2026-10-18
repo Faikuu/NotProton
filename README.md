@@ -67,7 +67,8 @@ trees that lsteamclient and steam-shim are compiled against. `docs/superpowers` 
 - An Apple silicon Mac. The app targets macOS 15 and later.
 - **Full Xcode**, not just the Command Line Tools. The app uses SwiftUI's macros, Swift Testing and
   `xcstringstool`, none of which ship in the Command Line Tools. CI uses Xcode 27. Open Xcode once and accept the
-  license (`sudo xcodebuild -license accept`). If `xcode-select -p` still points at the Command Line Tools, either
+  license (`sudo xcodebuild -license accept`) and install its components (`sudo xcodebuild -runFirstLaunch`).
+  Without that last step `make app` stops at the icon with "A required plugin failed to load". If `xcode-select -p` still points at the Command Line Tools, either
   `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` or
   `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` in your shell.
 - Homebrew packages: `brew install mingw-w64 bison flex cmake`. The fonts need `brew install fontforge gpatch` and
@@ -113,7 +114,8 @@ carries no components" and its install buttons stay disabled.
     make app-tests             # the Swift tests, with swift test --no-parallel
 
 Some of these tests exercise the installer, the appinfo helper and the payload itself, so they fail with "carries no
-components" until `make app-payload` has run. That is expected on a fresh checkout. The rest should pass.
+components" until `make app-payload` has run. That is expected on a fresh checkout. With the payload staged, all of
+them pass.
 
 Three tests are opt-in, because they use the real thing:
 
