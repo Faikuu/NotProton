@@ -25,7 +25,7 @@ If you don't have CrossOver, NotProton can download a free Wine instead: the Gce
 
 It has limits:
 - Rosetta only. There is no FEX version.
-- No D3DMetal or DXMT. Graphics go through MoltenVK and DXVK, so performance and compatibility will be worse than CrossOver.
+- No D3DMetal or DXMT, so graphics use Wine's own Direct3D translation (wined3d and vkd3d), and performance and compatibility will be worse than CrossOver.
 - Media codecs need GStreamer.framework. NotProton does not install it.
 
 This is an addition in this fork, not something upstream NotProton plans to support. CrossOver stays the better choice.

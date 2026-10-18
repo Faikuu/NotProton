@@ -143,6 +143,6 @@ there is `lsteamclient` loading and a Windows game starting.
   assumptions fail at runtime, setup will succeed but games will not start.
 - Gcenx may remove or replace the 11.15 release. The hash pin makes this fail loudly, and
   adding a mirror base URL is a one-line change.
-- No D3DMetal or DXMT means MoltenVK and DXVK only, with worse performance and
-  compatibility.
+- No D3DMetal or DXMT, so graphics use Wine's own Direct3D translation (wined3d and
+  vkd3d), with worse performance and compatibility than CrossOver.
 - Gcenx's builds expect GStreamer.framework for media. NotProton does not install it.

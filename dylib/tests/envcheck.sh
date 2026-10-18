@@ -124,6 +124,36 @@ is "other backends stay" "CX_GRAPHICS_BACKEND DXMT_CONFIG " "$(seen)"
 is "nothing to ignore logs nothing" "" "$np_dropped"
 unset -v CX_GRAPHICS_BACKEND DXMT_CONFIG
 
+echo "== Wine user name (stock Wine reads USER, CrossOver patches its own) =="
+stock=$(sed -n '/^np_stock_wine=""$/,/^fi$/p' "$SRC")
+tmpl_fn=$(sed -n '/^in_template_env() {/,/^}/p' "$SRC")
+# shellcheck disable=SC2016 # Match the literal line.
+stock_fwd=$(grep '^\[ -z "\$np_stock_wine" \]' "$SRC")
+[ -n "$stock" ] && [ -n "$tmpl_fn" ] && [ -n "$stock_fwd" ] ||
+  { echo "FAIL: the stock Wine user blocks were not found"; exit 1; }
+user_work=$(mktemp -d)
+mkdir -p "$user_work/stock/lib/wine" "$user_work/cx/lib/wine" "$user_work/cx/bin"
+: > "$user_work/cx/bin/cxbottle"
+# Prints the user in the process, the template env and the launcher arguments.
+probe() (
+  CX_ROOT="$1"; CX_HOME=h; WINELOADER=l; WINESERVER=s; wine_unix=u
+  USER=macuser; export USER
+  eval "$stock"
+  eval "$tmpl_fn"
+  without_lock_fds() { "$@"; }
+  set --
+  eval "$stock_fwd"
+  fwd=""
+  for arg in "$@"; do case "$arg" in USER=*) fwd="$fwd$arg " ;; esac; done
+  printf 'process=%s template=%s forwarded=%s' "$USER" \
+    "$(in_template_env /p /usr/bin/env | sed -n 's/^USER=//p')" "$fwd"
+)
+is "a stock Wine runs as steamuser everywhere" \
+  "process=steamuser template=steamuser forwarded=USER=steamuser " "$(probe "$user_work/stock")"
+is "a CrossOver runner keeps the user and adds nothing" \
+  "process=macuser template=macuser forwarded=" "$(probe "$user_work/cx")"
+rm -rf "$user_work"
+
 if [ "$fails" -eq 0 ]; then
 	echo "==> envcheck: all assertions hold"
 else
