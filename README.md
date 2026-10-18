@@ -21,13 +21,18 @@ If a game has a native macOS version as well as a Windows one, Steam will downlo
 
 **Free Wine**
 
-If you don't have CrossOver, NotProton can download a free Wine instead: the Gcenx build of wine-devel 11.15, which is free and open source (LGPL). To get it, open the Status pane and press "Download & Set Up" on the Wine row. After you confirm, it downloads about 190 MB from GitHub, then sets itself up like a CrossOver build. If the download or the setup fails, Wine is not usable until you set it up again from the Status pane.
+If you don't have CrossOver, NotProton can download a free Wine instead: the Gcenx build of wine-devel 11.15, which is free and open source (LGPL). To get it, open the Status pane and press "Download & Set Up" on the Wine row. After you confirm, it downloads about 190 MB from GitHub, along with DXVK, then sets itself up like a CrossOver build. If the download or the setup fails, Wine is not usable until you set it up again from the Status pane.
 
-Nobody has run a game on this Wine yet, so treat it as experimental: the Windows user name fix and loading the Steam client bridge (lsteamclient) are untested on it.
+No game has been run on this Wine yet, so treat it as experimental: the Windows user name fix and loading the Steam client bridge (lsteamclient) are untested on it.
+
+Graphics:
+- DirectX 11 games work through DXVK. NotProton downloads it with the Wine (about 3 MB) and copies it into each game's prefix at launch. This was checked with a Direct3D 11 test program, not yet with a game.
+- Vulkan games work through MoltenVK. This was checked with a Vulkan device probe.
+- DirectX 12 and DirectX 9 games are not supported on this runtime.
 
 It has limits:
 - Rosetta only. There is no FEX version.
-- No D3DMetal or DXMT, so graphics use Wine's own Direct3D translation (wined3d and vkd3d), and performance and compatibility will be worse than CrossOver.
+- No D3DMetal or DXMT. Performance and compatibility will be worse than CrossOver.
 - Media codecs need GStreamer.framework. NotProton does not install it.
 
 This is an addition in this fork, not something upstream NotProton plans to support. CrossOver stays the better choice.
